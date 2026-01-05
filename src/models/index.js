@@ -1,43 +1,64 @@
-'use strict';
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
+import Sequelize from "sequelize";
+import process from "process";
+import configFile from "../config/config.cjs";
 
-const fs = require('fs');
-const path = require('path');
-const Sequelize = require('sequelize');
-const process = require('process');
-const basename = path.basename(__filename);
-const env = process.env.NODE_ENV || 'development';
-const config = require(__dirname + '/../config/config.json')[env];
-const db = {};
+// ===== Fix __dirname trong ES Module =====
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
+// ===== Environment =====
+const env = process.env.NODE_ENV || "development";
+const config = configFile[env];
+
+// ===== Init Sequelize =====
 let sequelize;
 if (config.use_env_variable) {
   sequelize = new Sequelize(process.env[config.use_env_variable], config);
 } else {
-  sequelize = new Sequelize(config.database, config.username, config.password, config);
+  sequelize = new Sequelize(
+    config.database,
+    config.username,
+    config.password,
+    config
+  );
 }
 
-fs
-  .readdirSync(__dirname)
-  .filter(file => {
-    return (
-      file.indexOf('.') !== 0 &&
-      file !== basename &&
-      file.slice(-3) === '.js' &&
-      file.indexOf('.test.js') === -1
-    );
-  })
-  .forEach(file => {
-    const model = require(path.join(__dirname, file))(sequelize, Sequelize.DataTypes);
-    db[model.name] = model;
-  });
+// ===== Load all models =====
+const db = {};
+const basename = path.basename(__filename);
 
-Object.keys(db).forEach(modelName => {
+const modelFiles = fs
+  .readdirSync(__dirname)
+  .filter(
+    (file) =>
+      file !== basename &&
+      (file.endsWith(".js") || file.endsWith(".cjs")) &&
+      !file.endsWith(".test.js")
+  );
+
+for (const file of modelFiles) {
+  const modelPath = path.join(__dirname, file);
+
+  // Sequelize CLI model export là CommonJS
+  const module = await import(`file://${modelPath}`);
+  const modelFactory = module.default || module;
+
+  const model = modelFactory(sequelize, Sequelize.DataTypes);
+  db[model.name] = model;
+}
+
+// ===== Call associate() =====
+Object.keys(db).forEach((modelName) => {
   if (db[modelName].associate) {
     db[modelName].associate(db);
   }
 });
 
+// ===== Export =====
 db.sequelize = sequelize;
 db.Sequelize = Sequelize;
 
-module.exports = db;
+export default db;

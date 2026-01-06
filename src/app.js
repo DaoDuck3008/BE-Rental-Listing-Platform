@@ -5,6 +5,7 @@ import helmet from "helmet";
 import compression from "compression";
 import dotenv from "dotenv";
 import sequelize from "./config/database.js";
+import cookieParser from "cookie-parser";
 
 import defaultRoutes from "./routes/index.js";
 import authRoutes from "./routes/auth.route.js";
@@ -22,6 +23,7 @@ app.use(
     allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
+app.use(cookieParser());
 app.use(helmet());
 app.use(compression());
 app.use(morgan("dev"));

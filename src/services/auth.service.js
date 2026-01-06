@@ -51,12 +51,12 @@ export const loginService = async ({ email, password }) => {
   });
 
   if (!user) {
-    throw new Error("Invalid credentials");
+    return { ER: 1, EM: "Sai Email hoặc mật khẩu đăng nhập." };
   }
 
   const isMatch = comparePassword(password, user.password_hash);
   if (!isMatch) {
-    throw new Error("Invalid credentials");
+    return { ER: 1, EM: "Sai Email hoặc mật khẩu đăng nhập." };
   }
 
   const access_token = signAccessToken({

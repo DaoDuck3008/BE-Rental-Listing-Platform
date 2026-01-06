@@ -1,4 +1,4 @@
-import { verifyAcessToken } from "../utils/jwt.util";
+import { verifyAcessToken } from "../utils/jwt.util.js";
 
 // Authentication
 // để xác nhận xem người này đã đăng nhập chưa

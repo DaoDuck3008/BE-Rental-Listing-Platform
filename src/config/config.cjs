@@ -9,7 +9,7 @@ module.exports = {
     port: process.env.DB_PORT,
     dialect: "postgres",
     timezone: "+07:00",
-    logging: process.env.DB_LOGGING || false,
+    logging: process.env.DB_LOGGING === "true" ? true : false,
   },
 
   test: {

@@ -57,6 +57,7 @@ export const login = async (req, res, next) => {
           id: user.id,
           fullName: user.full_name,
           role: user.role.code,
+          avatar: user.avatar,
         },
       });
   } catch (error) {
@@ -121,6 +122,7 @@ export const googleLogin = async (req, res, next) => {
           id: user.id,
           fullName: user.full_name,
           role: user.role.code,
+          avatar: user.avatar,
         },
       });
   } catch (error) {

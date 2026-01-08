@@ -34,12 +34,12 @@ module.exports = (sequelize, DataTypes) => {
 
       phone_number: {
         type: DataTypes.STRING(11),
-        allowNull: false,
+        allowNull: true,
       },
 
       password_hash: {
         type: DataTypes.STRING,
-        allowNull: false,
+        allowNull: true,
       },
 
       full_name: {
@@ -62,6 +62,17 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.STRING(20),
         allowNull: true,
         defaultValue: "Active",
+      },
+
+      provider: {
+        type: DataTypes.STRING(20),
+        allowNull: true,
+        defaultValue: "Local",
+      },
+
+      provider_user_id: {
+        type: DataTypes.STRING,
+        allowNull: true,
       },
     },
     {

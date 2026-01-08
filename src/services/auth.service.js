@@ -41,6 +41,44 @@ export const registgerService = async ({
   return user;
 };
 
+export const googleRegiterService = async ({
+  email,
+  fullName,
+  provider,
+  provider_user_id,
+  avatar,
+}) => {
+  const existingUser = await User.findOne({
+    where: { email: email },
+  });
+  if (existingUser) {
+    throw new Error("Email already exists");
+  }
+
+  const role = await Role.findOne({ where: { code: "USER" } });
+
+  const user = await User.create({
+    role_id: role.id,
+    email,
+    full_name: fullName,
+    provider,
+    provider_user_id,
+    status: "Active",
+    gender: "Male",
+    avatar,
+  });
+
+  const _user = await User.findOne({
+    where: { id: user.id },
+    include: {
+      model: Role,
+      as: "role",
+    },
+  });
+
+  return _user;
+};
+
 export const loginService = async ({ email, password }) => {
   const user = await User.findOne({
     where: { email: email },
@@ -51,12 +89,12 @@ export const loginService = async ({ email, password }) => {
   });
 
   if (!user) {
-    return { ER: 1, EM: "Sai Email hoặc mật khẩu đăng nhập." };
+    return { EC: 1, EM: "Sai Email hoặc mật khẩu đăng nhập." };
   }
 
   const isMatch = comparePassword(password, user.password_hash);
   if (!isMatch) {
-    return { ER: 1, EM: "Sai Email hoặc mật khẩu đăng nhập." };
+    return { EC: 1, EM: "Sai Email hoặc mật khẩu đăng nhập." };
   }
 
   const access_token = signAccessToken({

@@ -12,8 +12,24 @@ export const getUserById = async (userId) => {
   });
 
   if (!user) {
-    return { EM: "Không tìm thấy người dùng", EC: 1 };
+    return { EC: 1, EM: "Không tìm thấy người dùng", user: null };
   }
 
-  return user;
+  return { EC: 0, EM: "OK", user };
+};
+
+export const getUserByEmail = async (userEmail) => {
+  const user = await User.findOne({
+    where: { email: userEmail },
+    include: {
+      model: Role,
+      as: "role",
+    },
+  });
+
+  if (!user) {
+    return { EC: 1, EM: "Không tìm thấy người dùng", user: null };
+  }
+
+  return { EC: 0, EM: "OK", user };
 };

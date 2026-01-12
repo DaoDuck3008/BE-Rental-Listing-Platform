@@ -65,12 +65,12 @@ module.exports = {
         allowNull: false,
         field: "password_hash",
       },
-      phoneNumber: {
+      phone_number: {
         type: Sequelize.STRING(11),
         allowNull: false,
         field: "phone_number",
       },
-      fullName: {
+      full_name: {
         type: Sequelize.TEXT,
         allowNull: false,
         field: "full_name",
@@ -96,6 +96,15 @@ module.exports = {
         type: Sequelize.DATE,
         field: "updated_at",
         defaultValue: Sequelize.NOW,
+      },
+      provider: {
+        type: Sequelize.STRING(20),
+        allowNull: true,
+      },
+      provider_user_id: {
+        type: Sequelize.STRING(100),
+        allowNull: true,
+        field: "provider_user_id",
       },
     });
 

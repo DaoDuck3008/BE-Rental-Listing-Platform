@@ -36,8 +36,8 @@ export const getMe = async (req, res, next) => {
       id: user.id,
       role: user.role.code,
       profile: {
-        fullName: user.full_name,
-        phoneNumber: user.phone_number,
+        full_name: user.full_name,
+        phone_number: user.phone_number,
         avatar: user.avatar,
         gender: user.gender,
         role: user.role.code,

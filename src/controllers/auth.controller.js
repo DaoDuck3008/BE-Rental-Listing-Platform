@@ -55,7 +55,7 @@ export const login = async (req, res, next) => {
         access_token: access_token,
         user: {
           id: user.id,
-          fullName: user.full_name,
+          full_name: user.full_name,
           role: user.role.code,
           avatar: user.avatar,
         },
@@ -85,7 +85,7 @@ export const googleLogin = async (req, res, next) => {
     if (!user && EC === 1) {
       user = await googleRegiterService({
         email,
-        fullName: name,
+        full_name: name,
         provider: "GOOGLE",
         provider_user_id: sub,
         avatar: picture,
@@ -120,7 +120,7 @@ export const googleLogin = async (req, res, next) => {
         access_token: access_token,
         user: {
           id: user.id,
-          fullName: user.full_name,
+          full_name: user.full_name,
           role: user.role.code,
           avatar: user.avatar,
         },
@@ -148,7 +148,7 @@ export const refresh = async (req, res) => {
     user: {
       id: user.id,
       role: user.role.code,
-      fullName: user.full_name,
+      full_name: user.full_name,
       avatar: user.avatar,
     },
   });

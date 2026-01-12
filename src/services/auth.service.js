@@ -7,7 +7,7 @@ const { User, Role } = db;
 export const registgerService = async ({
   email,
   password,
-  confirmPassword,
+  confirm_password,
   phone_number,
   full_name,
   gender,
@@ -20,7 +20,7 @@ export const registgerService = async ({
     throw new Error("Email already exists");
   }
 
-  if (password !== confirmPassword) {
+  if (password !== confirm_password) {
     throw new Error("Password is not matched!");
   }
 

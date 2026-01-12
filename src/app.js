@@ -9,6 +9,7 @@ import cookieParser from "cookie-parser";
 
 import defaultRoutes from "./routes/index.js";
 import authRoutes from "./routes/auth.route.js";
+import userRoutes from "./routes/user.route.js";
 
 dotenv.config();
 
@@ -44,6 +45,7 @@ connectDB();
 // ROUTE
 app.use("/", defaultRoutes);
 app.use("/api/auth", authRoutes);
+app.use("/api/users", userRoutes);
 
 // HANDLING ERROR (TEMPORARY)
 app.use((err, req, res, next) => {

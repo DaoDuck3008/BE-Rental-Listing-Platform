@@ -28,7 +28,7 @@ export const register = async (req, res, next) => {
 
 export const login = async (req, res, next) => {
   try {
-    const { user, access_token, refreshToken, ER, EM } = await loginService(
+    const { user, access_token, refreshToken, EC, EM } = await loginService(
       req.body
     );
 
@@ -149,6 +149,7 @@ export const refresh = async (req, res) => {
       id: user.id,
       role: user.role.code,
       fullName: user.full_name,
+      avatar: user.avatar,
     },
   });
 };

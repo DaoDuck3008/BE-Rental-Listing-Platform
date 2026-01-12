@@ -8,8 +8,8 @@ export const registgerService = async ({
   email,
   password,
   confirmPassword,
-  phoneNumber,
-  fullName,
+  phone_number,
+  full_name,
   gender,
   avatar,
 }) => {
@@ -31,8 +31,8 @@ export const registgerService = async ({
     role_id: role.id,
     email,
     password_hash: hashedPassword,
-    phone_number: phoneNumber,
-    full_name: fullName,
+    phone_number: phone_number,
+    full_name: full_name,
     avatar,
     gender,
     status: "Active",
@@ -43,7 +43,7 @@ export const registgerService = async ({
 
 export const googleRegiterService = async ({
   email,
-  fullName,
+  full_name,
   provider,
   provider_user_id,
   avatar,
@@ -60,7 +60,7 @@ export const googleRegiterService = async ({
   const user = await User.create({
     role_id: role.id,
     email,
-    full_name: fullName,
+    full_name: full_name,
     provider,
     provider_user_id,
     status: "Active",

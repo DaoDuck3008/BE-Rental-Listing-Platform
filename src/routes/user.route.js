@@ -6,11 +6,19 @@ import {
 } from "../controllers/user.controller.js";
 import { upload } from "../middlewares/upload.middleware.js";
 import { protect } from "../middlewares/auth.middleware.js";
+import { validate } from "../middlewares/validate.middleware.js";
+import { updateProfileSchema } from "../validators/user.validator.js";
 
 const router = express.Router();
 
 router.get("/me", getMe);
 router.get("/profile", getProfile);
-router.put("/profile", protect, upload.single("avatar"), updateProfile);
+router.put(
+  "/profile",
+  protect,
+  upload.single("avatar"),
+  validate(updateProfileSchema),
+  updateProfile
+);
 
 export default router;

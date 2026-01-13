@@ -1,3 +1,5 @@
+import ValidationError from "../errors/ValidationError.js";
+
 export const validate =
   (schema, source = "body") =>
   (req, res, next) => {
@@ -9,10 +11,7 @@ export const validate =
         message: error.message,
       }));
 
-      return res.status(400).json({
-        code: "VALIDATION_ERROR",
-        errors,
-      });
+      return next(new ValidationError("Dữ liệu không hợp lệ", errors));
     }
 
     req[source] = result.data;

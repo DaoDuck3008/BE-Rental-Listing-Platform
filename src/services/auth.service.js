@@ -1,5 +1,7 @@
 import { hashPassword, comparePassword } from "../utils/password.util.js";
 import { signAccessToken, signRefreshToken } from "../utils/jwt.util.js";
+import AuthenticationError from "../errors/AuthenticationError.js";
+import ConflictError from "../errors/ConflictError.js";
 import db from "../models/index.js";
 
 const { User, Role } = db;
@@ -17,11 +19,11 @@ export const registgerService = async ({
     where: { email: email },
   });
   if (existingUser) {
-    throw new Error("Email already exists");
+    throw new ConflictError("Email đã tồn tại");
   }
 
   if (password !== confirm_password) {
-    throw new Error("Password is not matched!");
+    throw new ConflictError("Mật khẩu không khớp.");
   }
 
   const role = await Role.findOne({ where: { code: "USER" } });
@@ -41,7 +43,7 @@ export const registgerService = async ({
   return user;
 };
 
-export const googleRegiterService = async ({
+export const googleRegisterService = async ({
   email,
   full_name,
   provider,
@@ -52,7 +54,7 @@ export const googleRegiterService = async ({
     where: { email: email },
   });
   if (existingUser) {
-    throw new Error("Email already exists");
+    throw new ConflictError("Email này đã được sử dụng.");
   }
 
   const role = await Role.findOne({ where: { code: "USER" } });
@@ -79,6 +81,27 @@ export const googleRegiterService = async ({
   return _user;
 };
 
+export const getOrCreateUserByGoogle = async (googleUser) => {
+  let user = await User.findOne({
+    where: { email: googleUser.email },
+    include: { model: Role, as: "role" },
+  });
+
+  const { email, name, picture, sub } = googleUser;
+
+  if (!user) {
+    user = await googleRegisterService({
+      email,
+      full_name: name,
+      provider: "GOOGLE",
+      provider_user_id: sub,
+      avatar: picture,
+    });
+  }
+
+  return user;
+};
+
 export const loginService = async ({ email, password }) => {
   const user = await User.findOne({
     where: { email: email },
@@ -89,12 +112,12 @@ export const loginService = async ({ email, password }) => {
   });
 
   if (!user) {
-    return { EC: 1, EM: "Sai Email hoặc mật khẩu đăng nhập." };
+    throw new AuthenticationError("Sai Email hoặc mật khẩu đăng nhập.");
   }
 
-  const isMatch = comparePassword(password, user.password_hash);
+  const isMatch = await comparePassword(password, user.password_hash);
   if (!isMatch) {
-    return { EC: 1, EM: "Sai Email hoặc mật khẩu đăng nhập." };
+    throw new AuthenticationError("Sai Email hoặc mật khẩu đăng nhập.");
   }
 
   const access_token = signAccessToken({

@@ -2,9 +2,9 @@ import { OAuth2Client } from "google-auth-library";
 import {
   registgerService,
   loginService,
-  googleRegiterService,
+  getOrCreateUserByGoogle,
 } from "../services/auth.service.js";
-import { getUserByEmail, getUserById } from "../services/user.service.js";
+import { getUserById } from "../services/user.service.js";
 import {
   signAccessToken,
   verifyRefreshToken,
@@ -28,15 +28,7 @@ export const register = async (req, res, next) => {
 
 export const login = async (req, res, next) => {
   try {
-    const { user, access_token, refreshToken, EC, EM } = await loginService(
-      req.body
-    );
-
-    if (EC === 1) {
-      return res.status(401).json({
-        Message: EM,
-      });
-    }
+    const { user, access_token, refreshToken } = await loginService(req.body);
 
     // Nếu như client gửi về thông tin lưu đăng nhập thì set cookie sống trong 7 ngày
     const maxAge =
@@ -76,23 +68,11 @@ export const googleLogin = async (req, res, next) => {
     });
 
     const payload = ticket.getPayload();
-    const { email, name, picture, sub } = payload;
 
-    // 2. Tìm user theo email
-    let { user, EM, EC } = await getUserByEmail(email);
+    // 2. Tìm hoặc tạo mới tài khoản người dùng với payload google
+    const user = await getOrCreateUserByGoogle(payload);
 
-    // 3. Nếu chưa có thì tạo mới
-    if (!user && EC === 1) {
-      user = await googleRegiterService({
-        email,
-        full_name: name,
-        provider: "GOOGLE",
-        provider_user_id: sub,
-        avatar: picture,
-      });
-    }
-
-    // 4. Tạo access token và refresh token
+    // 3. Tạo access token và refresh token
     const access_token = signAccessToken({
       sub: user.id,
       role: user.role.code,
@@ -106,7 +86,7 @@ export const googleLogin = async (req, res, next) => {
     // Mặc định cho 7 ngày
     const maxAge = 7 * 24 * 60 * 60 * 1000;
 
-    // 5. Trả về cho client
+    // 4. Trả về cho client
     return res
       .status(200)
       .cookie("refresh_token", refreshToken, {
@@ -126,7 +106,6 @@ export const googleLogin = async (req, res, next) => {
         },
       });
   } catch (error) {
-    // return res.status(401).json({ message: "Đăng nhập bằng google thất bại" });
     next(error);
   }
 };
@@ -137,7 +116,7 @@ export const refresh = async (req, res) => {
 
   const payload = verifyRefreshToken(token);
 
-  const { user } = await getUserById(payload.sub);
+  const user = await getUserById(payload.sub);
 
   const access_token = signAccessToken({
     sub: payload.sub,

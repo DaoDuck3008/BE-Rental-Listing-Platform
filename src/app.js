@@ -47,10 +47,19 @@ app.use("/", defaultRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 
-// HANDLING ERROR (TEMPORARY)
+// HANDLING ERROR
 app.use((err, req, res, next) => {
+  const statusCode = err.statusCode || 500;
+
   console.error(err);
-  res.status(500).json({ message: "Internal Server Error!" });
+
+  res.status(statusCode).json({
+    success: false,
+    statusCode,
+    error: err.errorCode || "INTERNAL_SERVER_ERROR",
+    message: err.message,
+    errors: err.errors || undefined,
+  });
 });
 
 export default app;

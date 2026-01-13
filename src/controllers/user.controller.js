@@ -9,14 +9,7 @@ export const getMe = async (req, res, next) => {
     const token = auth.split(" ")[1];
     const payload = verifyAcessToken(token);
 
-    const { user, EM, EC } = await getUserById(payload.sub);
-
-    if (EC !== 0) {
-      return res.status(400).json({
-        message: EM,
-        code: EC,
-      });
-    }
+    const user = await getUserById(payload.sub);
 
     let canPostListing = true;
     let profileCompleted = true;
@@ -62,13 +55,6 @@ export const updateProfile = async (req, res, next) => {
     const userId = payload.sub;
 
     const { EM, EC } = await updateUserProfile(userId, req.body, req.file);
-
-    if (EC !== 0) {
-      return res.status(400).json({
-        message: EM,
-        code: EC,
-      });
-    }
 
     return res.status(200).json({
       message: EM,

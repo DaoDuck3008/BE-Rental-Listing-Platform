@@ -11,7 +11,7 @@ import { updateProfileSchema } from "../validators/user.validator.js";
 
 const router = express.Router();
 
-router.get("/me", getMe);
+router.get("/me", protect, getMe);
 router.get("/profile", getProfile);
 router.put(
   "/profile",

@@ -1,5 +1,7 @@
 import db from "../models/index.js";
 import { uploadImage, destroyImage } from "./upload.service.js";
+import { googleRegisterService } from "./auth.service.js";
+import NotFoundError from "../errors/NotFoundError.js";
 
 const { User, Role } = db;
 
@@ -13,10 +15,10 @@ export const getUserById = async (userId) => {
   });
 
   if (!user) {
-    return { EC: 1, EM: "Không tìm thấy người dùng", user: null };
+    throw new NotFoundError("không tìm thấy người dùng.");
   }
 
-  return { EC: 0, EM: "OK", user };
+  return user;
 };
 
 export const getUserByEmail = async (userEmail) => {
@@ -29,17 +31,17 @@ export const getUserByEmail = async (userEmail) => {
   });
 
   if (!user) {
-    return { EC: 1, EM: "Không tìm thấy người dùng", user: null };
+    throw new NotFoundError("không tìm thấy người dùng.");
   }
 
-  return { EC: 0, EM: "OK", user };
+  return user;
 };
 
 export const updateUserProfile = async (userId, userData, userFile) => {
   const user = await User.findOne({ where: { id: userId } });
 
   if (!user) {
-    return { EC: 1, EM: "Không tìm thấy người dùng", user: null };
+    throw new NotFoundError("không tìm thấy người dùng.");
   }
 
   const allowedFields = ["full_name", "phone_number", "gender"];
@@ -69,7 +71,7 @@ export const updateUserProfile = async (userId, userData, userFile) => {
     if (role) {
       updateData.role_id = role.id;
     } else {
-      return { EC: 2, EM: "Vai trò không hợp lệ" };
+      throw new NotFoundError("Vai trò người dùng không tồn tại.");
     }
   }
 

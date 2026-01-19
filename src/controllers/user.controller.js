@@ -1,10 +1,11 @@
 import { getUserById, updateUserProfile } from "../services/user.service.js";
 import { verifyAcessToken } from "../utils/jwt.util.js";
+import AuthenticationError from "../errors/AuthenticationError.js";
 
 export const getMe = async (req, res, next) => {
   try {
     const auth = req.headers.authorization;
-    if (!auth) return res.sendStatus(401);
+    if (!auth) next(new AuthenticationError("No authorization header"));
 
     const token = auth.split(" ")[1];
     const payload = verifyAcessToken(token);
@@ -43,7 +44,32 @@ export const getMe = async (req, res, next) => {
   }
 };
 
-export const getProfile = async (req, res, next) => {};
+export const getProfile = async (req, res, next) => {
+  try {
+    const auth = req.headers.authorization;
+    if (!auth) next(new AuthenticationError("No authorization header"));
+
+    const token = auth.split(" ")[1];
+    const payload = verifyAcessToken(token);
+
+    const user = await getUserById(payload.sub);
+
+    return res.status(200).json({
+      success: true,
+      user: {
+        role: user.role.name,
+        email: user.email,
+        phone_number: user.phone_number,
+        full_name: user.full_name,
+        created_at: user.createdAt,
+        status: user.status,
+        gender: user.gender,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
 
 export const updateProfile = async (req, res, next) => {
   try {

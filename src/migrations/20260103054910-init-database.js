@@ -189,6 +189,14 @@ module.exports = {
         type: Sequelize.TEXT,
         allowNull: false,
       },
+      province_code: {
+        type: Sequelize.INTEGER,
+        allowNull: false,
+      },
+      ward_code: {
+        type: Sequelize.INTEGER,
+        allowNull: false,
+      },
       latitude: {
         type: Sequelize.DOUBLE,
         allowNull: true,
@@ -197,13 +205,18 @@ module.exports = {
         type: Sequelize.DOUBLE,
         allowNull: true,
       },
-      bedroom: {
+      bedrooms: {
         type: Sequelize.INTEGER,
         allowNull: false,
       },
-      bathroom: {
+      bathrooms: {
         type: Sequelize.INTEGER,
         allowNull: false,
+      },
+      views: {
+        type: Sequelize.INTEGER,
+        allowNull: false,
+        defaultValue: 0,
       },
       rules: {
         type: Sequelize.JSONB,
@@ -323,7 +336,7 @@ module.exports = {
       amenitiesId: {
         type: Sequelize.UUID,
         allowNull: false,
-        field: "amenities_id",
+        field: "amenity_id",
         references: {
           model: "amenities",
           key: "id",
@@ -684,10 +697,10 @@ module.exports = {
 
     // Listing amenities indexes
     await queryInterface.addIndex("listing_amenities", ["listing_id"]);
-    await queryInterface.addIndex("listing_amenities", ["amenities_id"]);
-    // Unique constraint for listing_id + amenities_id
+    await queryInterface.addIndex("listing_amenities", ["amenity_id"]);
+    // Unique constraint for listing_id + amenity_id
     await queryInterface.addConstraint("listing_amenities", {
-      fields: ["listing_id", "amenities_id"],
+      fields: ["listing_id", "amenity_id"],
       type: "unique",
       name: "uq_listing_amenities",
     });

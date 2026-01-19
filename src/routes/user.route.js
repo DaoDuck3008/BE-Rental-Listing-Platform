@@ -12,7 +12,7 @@ import { updateProfileSchema } from "../validators/user.validator.js";
 const router = express.Router();
 
 router.get("/me", protect, getMe);
-router.get("/profile", getProfile);
+router.get("/profile", protect, getProfile);
 router.put(
   "/profile",
   protect,

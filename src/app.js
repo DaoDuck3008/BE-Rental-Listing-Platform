@@ -11,6 +11,7 @@ import defaultRoutes from "./routes/index.js";
 import authRoutes from "./routes/auth.route.js";
 import userRoutes from "./routes/user.route.js";
 import amenitiesRoutes from "./routes/amenities.route.js";
+import listingRoutes from "./routes/listing.route.js";
 
 dotenv.config();
 
@@ -48,6 +49,7 @@ app.use("/", defaultRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/amenities", amenitiesRoutes);
+app.use("/api/listings", listingRoutes);
 
 // HANDLING ERROR
 app.use((err, req, res, next) => {

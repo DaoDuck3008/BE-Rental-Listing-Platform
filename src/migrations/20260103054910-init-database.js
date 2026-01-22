@@ -218,6 +218,11 @@ module.exports = {
         allowNull: false,
         defaultValue: 0,
       },
+      capacity: {
+        type: Sequelize.INTEGER,
+        allowNull: false,
+        defaultValue: 1,
+      },
       rules: {
         type: Sequelize.JSONB,
         allowNull: true,
@@ -229,6 +234,11 @@ module.exports = {
       status: {
         type: Sequelize.STRING(20),
         allowNull: false,
+      },
+      show_phone_number: {
+        type: Sequelize.BOOLEAN,
+        allowNull: false,
+        defaultValue: true,
       },
       expiredAt: {
         type: Sequelize.DATE,
@@ -279,6 +289,11 @@ module.exports = {
         type: Sequelize.INTEGER,
         defaultValue: 0,
         field: "sort_order",
+      },
+      public_id: {
+        type: Sequelize.TEXT,
+        allowNull: true,
+        field: "public_id",
       },
       createdAt: {
         type: Sequelize.DATE,

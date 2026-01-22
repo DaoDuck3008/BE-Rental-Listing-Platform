@@ -120,6 +120,8 @@ export const refresh = async (req, res) => {
 
   const access_token = signAccessToken({
     sub: payload.sub,
+    id: user.id,
+    role: user.role.code,
   });
 
   return res.json({

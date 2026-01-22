@@ -35,12 +35,17 @@ module.exports = (sequelize, DataTypes) => {
         allowNull: true,
         defaultValue: 0,
       },
+      public_id: {
+        type: DataTypes.TEXT,
+        allowNull: true,
+      },
     },
     {
       sequelize,
       modelName: "ListingImage",
       tableName: "listing_images",
       timestamps: true,
+      updatedAt: false,
       underscored: true,
     }
   );

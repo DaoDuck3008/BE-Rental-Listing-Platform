@@ -28,7 +28,7 @@ export const requireRole = (role) => (req, res, next) => {
     return next(new AuthenticationError("Chưa xác thực người dùng."));
   }
 
-  if (req.user.role !== role) {
+  if (!role.includes(req.user.role)) {
     return next(new AuthorizationError("Bạn không có quyền truy cập"));
   }
 

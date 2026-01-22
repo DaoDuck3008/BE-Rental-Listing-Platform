@@ -68,11 +68,11 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.INTEGER,
         allowNull: false,
       },
-      ward: {
+      ward_code: {
         type: DataTypes.INTEGER,
         allowNull: false,
       },
-      longtitude: {
+      longitude: {
         type: DataTypes.DOUBLE,
         allowNull: true,
       },
@@ -93,6 +93,11 @@ module.exports = (sequelize, DataTypes) => {
         allowNull: false,
         defaultValue: 0,
       },
+      capacity: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        defaultValue: 1,
+      },
       rules: {
         type: DataTypes.JSONB,
         allowNull: true,
@@ -105,6 +110,11 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.STRING(20),
         allowNull: false,
         defaultValue: "Scratched",
+      },
+      show_phone_number: {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: true,
       },
       expired_at: {
         type: DataTypes.DATE,

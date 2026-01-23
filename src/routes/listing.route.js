@@ -2,6 +2,7 @@ import express from "express";
 import {
   createListing,
   getAllListingTypes,
+  getMyListings,
 } from "../controllers/listing.controller.js";
 import { protect, requireRole } from "../middlewares/auth.middleware.js";
 import { upload } from "../middlewares/upload.middleware.js";
@@ -11,6 +12,7 @@ import { createListingSchema } from "../validators/listing.validator.js";
 const router = express.Router();
 
 router.get("/listing_types", getAllListingTypes);
+router.get("/my-listings", protect, requireRole(["LANDLORD"]), getMyListings);
 router.post(
   "/create",
   protect,

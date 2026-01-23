@@ -26,6 +26,49 @@ export const getAllListingTypesService = async () => {
   }
 };
 
+export const getListingByOwnerIdService = async (ownerId, page, limit) => {
+  const offset = (page - 1) * limit;
+  const result = await Listing.findAndCountAll({
+    where: {
+      owner_id: ownerId,
+    },
+    attributes: [
+      "id",
+      "title",
+      "price",
+      "area",
+      "address",
+      "bedrooms",
+      "bathrooms",
+      "views",
+      "status",
+      "created_at",
+    ],
+    include: [
+      {
+        model: ListingImage,
+        as: "images",
+        attributes: ["image_url", "sort_order", "public_id"],
+        order: [["sort_order", "ASC"]],
+      },
+      {
+        model: ListingType,
+        as: "listing_type",
+        attributes: ["code", "name"],
+      },
+    ],
+    order: [
+      ["created_at", "DESC"],
+      ["id", "DESC"],
+    ],
+    limit,
+    offset,
+    distinct: true,
+  });
+
+  return result;
+};
+
 export const createListingService = async (
   userId,
   listingData,

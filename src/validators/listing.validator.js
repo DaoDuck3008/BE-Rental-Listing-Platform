@@ -36,4 +36,48 @@ export const createListingSchema = z.object({
     .pipe(z.array(z.string())),
 
   showPhoneNumber: z.coerce.boolean(),
+  coverImageIndex: z.coerce.number().min(0, "Ảnh bìa không được âm."),
+});
+
+const coerceNullableNumber = z.preprocess(
+  (val) => (val === "" || val === "null" || val === undefined ? null : val),
+  z.coerce.number().optional().nullable()
+);
+
+export const createDraftListingSchema = z.object({
+  title: z
+    .string({ required_error: "Vui lòng nhập ít nhất tiêu đề để lưu bản nháp" })
+    .trim()
+    .min(1, "Vui lòng nhập ít nhất tiêu đề để lưu bản nháp")
+    .max(255, "Tiêu đề không được vượt quá 255 ký tự."),
+
+  price: coerceNullableNumber,
+  area: coerceNullableNumber,
+  capacity: coerceNullableNumber,
+  beds: coerceNullableNumber,
+  bathrooms: coerceNullableNumber,
+  coverImageIndex: coerceNullableNumber,
+
+  province_code: coerceNullableNumber,
+  ward_code: coerceNullableNumber,
+  address: z.string().optional().nullable(),
+
+  longitude: coerceNullableNumber,
+  latitude: coerceNullableNumber,
+
+  description: z.string().optional().nullable(),
+
+  listing_type_code: z.string().optional().nullable(),
+
+  amenities: z
+    .string()
+    .optional()
+    .nullable()
+    .transform((val) => {
+      if (!val || val === "" || val === "null") return [];
+      if (Array.isArray(val)) return val;
+      return val.split(",").map((id) => id.trim());
+    }),
+
+  showPhoneNumber: z.coerce.boolean().optional(),
 });

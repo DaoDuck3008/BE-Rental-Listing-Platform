@@ -1,7 +1,10 @@
 import {
   createListingService,
   getAllListingTypesService,
+  getListingByIdService,
   getListingByOwnerIdService,
+  submitDraftListingService,
+  updateListingService,
 } from "../services/listing.service.js";
 import AuthenticationError from "../errors/AuthenticationError.js";
 
@@ -40,6 +43,21 @@ export const getMyListings = async (req, res, next) => {
   }
 };
 
+export const getListingById = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const result = await getListingByIdService(id);
+
+    return res.json({
+      success: true,
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Landlord tạo bài viết mới PENDING
 export const createListing = async (req, res, next) => {
   try {
     const data = req.body;
@@ -57,9 +75,169 @@ export const createListing = async (req, res, next) => {
     );
 
     return res.status(201).json({
-      message: "Tạo listing thành công",
+      message: "Tạo bài viết thành công",
       data: result,
     });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Landlord tạo và lưu bản DRAFT
+export const createDraftListing = async (req, res, next) => {
+  try {
+    const data = req.body;
+    const images = req.files;
+    const coverImageIndex = parseInt(data.coverImageIndex) || 0;
+
+    const userId = req.user.id;
+    if (!userId) {
+      throw new AuthenticationError("Không tìm thấy thông tin người dùng");
+    }
+
+    const result = await createListingService(
+      userId,
+      data,
+      images,
+      coverImageIndex,
+      "DRAFT"
+    );
+
+    return res.status(201).json({
+      message: "Lưu bản nháp thành công",
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updatePendingListing = async (req, res, next) => {
+  try {
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Landlord muốn sửa lại thông tin khi đã PUBLISHED. CHỈ có thể đổi title, description, contact, amenities
+export const updatePublisedListing = async (req, res, next) => {
+  try {
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Landlord bổ sung thông tin vào bản DRAFT
+export const updateDraftListing = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const data = req.body;
+    const images = req.files;
+    const coverImageIndex = parseInt(data.coverImageIndex) || 0;
+    const userId = req.user.id;
+
+    const result = await updateListingService(
+      id,
+      userId,
+      data,
+      images,
+      coverImageIndex
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Cập nhật bài đăng thành công",
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Landlord muốn đăng bài từ bản DRAFT -> PENDING
+export const submitDraftListing = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const images = req.files;
+
+    const result = await submitDraftListingService(id, images);
+
+    return res.status(201).json({
+      success: true,
+      message: "Tạo bài viết thành công",
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// LandLord muốn sửa bài đăng PUBLISHED -> tạo mới EDIT_DRAFT. Chỉnh sửa nặng (price, area, bedrooms, bathrooms, images)
+export const createEditDraftListing = async (req, res, next) => {
+  try {
+  } catch (error) {
+    next(error);
+  }
+};
+
+// LANDLORD muốn đăng bài từ EDIT-DRAFT -> PENDING
+export const submitEditDraftListing = async (req, res, next) => {
+  try {
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Admin approve bài của landlord
+export const approveListing = async (req, res, next) => {
+  try {
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Admin từ chối bài của Landlord PENDING -> REJECTED
+export const rejectListing = async (req, res, next) => {
+  try {
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Landlord không muốn hiển thị bài lên new feeds nữa PUBLISHED -> HIDDEN
+export const hideListing = async (req, res, next) => {
+  try {
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Landlord hiển thị lại bài đăng HIDDEN -> PUBLISHED (Không được chỉnh sửa)
+export const showListing = async (req, res, next) => {
+  try {
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Bài đăng của landlord đã hết hạn muốn làm mới lại EXPIRED -> PENDING
+export const renewListing = async (req, res, next) => {
+  try {
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Landlord xóa bài đăng PENDING/ PUBLISHED/ HIDDEN/ DRAFT/ REJECTED -> DELETED
+export const softDeleteListing = async (req, res, next) => {
+  try {
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const hardDeleteListing = async (req, res, next) => {
+  try {
   } catch (error) {
     next(error);
   }

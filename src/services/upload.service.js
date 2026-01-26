@@ -33,3 +33,21 @@ export const destroyImage = async (folder, public_id) => {
     );
   });
 };
+
+export const destroyImages = async (folder, public_ids) => {
+  if (!public_ids || public_ids.length === 0) return;
+
+  const full_public_ids = public_ids.map(
+    (id) => `${process.env.CLOUDINARY_ROOT_FOLDER_IMAGES}/${folder}/${id}`
+  );
+
+  return new Promise((resolve, reject) => {
+    cloudinary.api.delete_resources(full_public_ids, (error, result) => {
+      if (error) {
+        return reject(error);
+      }
+      resolve(result);
+    });
+  });
+};
+

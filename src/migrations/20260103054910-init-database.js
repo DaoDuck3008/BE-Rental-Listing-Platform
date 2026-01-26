@@ -160,7 +160,7 @@ module.exports = {
       },
       listingTypeId: {
         type: Sequelize.UUID,
-        allowNull: false,
+        allowNull: true,
         field: "listing_type_id",
         references: {
           model: "listing_types",
@@ -171,31 +171,31 @@ module.exports = {
       },
       title: {
         type: Sequelize.TEXT,
-        allowNull: false,
+        allowNull: true,
       },
       description: {
         type: Sequelize.TEXT,
-        allowNull: false,
+        allowNull: true,
       },
       price: {
         type: Sequelize.DECIMAL(12, 2),
-        allowNull: false,
+        allowNull: true,
       },
       area: {
         type: Sequelize.DECIMAL(8, 2),
-        allowNull: false,
+        allowNull: true,
       },
       address: {
         type: Sequelize.TEXT,
-        allowNull: false,
+        allowNull: true,
       },
       province_code: {
         type: Sequelize.INTEGER,
-        allowNull: false,
+        allowNull: true,
       },
       ward_code: {
         type: Sequelize.INTEGER,
-        allowNull: false,
+        allowNull: true,
       },
       latitude: {
         type: Sequelize.DOUBLE,
@@ -207,11 +207,11 @@ module.exports = {
       },
       bedrooms: {
         type: Sequelize.INTEGER,
-        allowNull: false,
+        allowNull: true,
       },
       bathrooms: {
         type: Sequelize.INTEGER,
-        allowNull: false,
+        allowNull: true,
       },
       views: {
         type: Sequelize.INTEGER,
@@ -234,6 +234,7 @@ module.exports = {
       status: {
         type: Sequelize.STRING(20),
         allowNull: false,
+        defaultValue: "DRAFT",
       },
       show_phone_number: {
         type: Sequelize.BOOLEAN,

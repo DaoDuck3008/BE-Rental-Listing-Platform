@@ -42,35 +42,35 @@ module.exports = (sequelize, DataTypes) => {
       },
       listing_type_id: {
         type: DataTypes.UUID,
-        allowNull: false,
+        allowNull: true,
       },
       title: {
         type: DataTypes.STRING,
-        allowNull: false,
+        allowNull: true,
       },
       description: {
         type: DataTypes.TEXT,
-        allowNull: false,
+        allowNull: true,
       },
       price: {
         type: DataTypes.DECIMAL(12, 2),
-        allowNull: false,
+        allowNull: true,
       },
       area: {
         type: DataTypes.DECIMAL(8, 2),
-        allowNull: false,
+        allowNull: true,
       },
       address: {
         type: DataTypes.TEXT,
-        allowNull: false,
+        allowNull: true,
       },
       province_code: {
         type: DataTypes.INTEGER,
-        allowNull: false,
+        allowNull: true,
       },
       ward_code: {
         type: DataTypes.INTEGER,
-        allowNull: false,
+        allowNull: true,
       },
       longitude: {
         type: DataTypes.DOUBLE,
@@ -82,11 +82,11 @@ module.exports = (sequelize, DataTypes) => {
       },
       bedrooms: {
         type: DataTypes.INTEGER,
-        allowNull: false,
+        allowNull: true,
       },
       bathrooms: {
         type: DataTypes.INTEGER,
-        allowNull: false,
+        allowNull: true,
       },
       views: {
         type: DataTypes.INTEGER,
@@ -109,7 +109,7 @@ module.exports = (sequelize, DataTypes) => {
       status: {
         type: DataTypes.STRING(20),
         allowNull: false,
-        defaultValue: "Scratched",
+        defaultValue: "DRAFT",
       },
       show_phone_number: {
         type: DataTypes.BOOLEAN,

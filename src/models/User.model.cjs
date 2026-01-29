@@ -9,6 +9,11 @@ module.exports = (sequelize, DataTypes) => {
         foreignKey: "role_id",
         as: "role",
       });
+
+      User.hasMany(models.Listing, {
+        foreignKey: "id",
+        as: "listings",
+      });
     }
   }
 

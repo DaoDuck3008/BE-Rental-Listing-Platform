@@ -25,6 +25,14 @@ module.exports = (sequelize, DataTypes) => {
         otherKey: "amenity_id",
         as: "amenities",
       });
+
+      // 1 Listing -> 1 Landlord
+      Listing.belongsTo(models.User, {
+        foreignKey: "owner_id",
+        as: "owner",
+        onDelete: "RESTRICT",
+        onUpdate: "CASCADE",
+      });
     }
   }
 

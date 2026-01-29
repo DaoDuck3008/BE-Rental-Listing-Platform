@@ -6,8 +6,10 @@ import db from "../models/index.js";
 import sequelize from "../config/database.js";
 import { destroyImages, uploadImage } from "./upload.service.js";
 import { randomUUID } from "crypto";
+import { Op } from "sequelize";
 
-const { ListingType, Listing, ListingImage, ListingAmenity, Amenity } = db;
+const { ListingType, Listing, ListingImage, ListingAmenity, Amenity, User } =
+  db;
 
 export const getAllListingTypesService = async () => {
   try {
@@ -45,6 +47,18 @@ export const getListingByIdService = async (id) => {
           as: "amenities",
           through: { attributes: [] },
         },
+        {
+          model: User,
+          as: "owner",
+          attributes: [
+            "id",
+            "full_name",
+            "email",
+            "phone_number",
+            "gender",
+            "avatar",
+          ],
+        },
       ],
     });
 
@@ -64,6 +78,7 @@ export const getListingByOwnerIdService = async (ownerId, page, limit) => {
   const result = await Listing.findAndCountAll({
     where: {
       owner_id: ownerId,
+      status: { [Op.notIn]: ["DELETED"] },
     },
     attributes: [
       "id",

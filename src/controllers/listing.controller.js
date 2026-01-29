@@ -1,10 +1,12 @@
 import {
   createListingService,
   getAllListingTypesService,
-  getListingByIdService,
-  getListingByOwnerIdService,
+  getPublishedListingByIdService,
+  getListingsByOwnerIdService,
   submitDraftListingService,
   updateListingService,
+  getMyListingByIdService,
+  softDeleteListingService,
 } from "../services/listing.service.js";
 import AuthenticationError from "../errors/AuthenticationError.js";
 
@@ -26,7 +28,7 @@ export const getMyListings = async (req, res, next) => {
     const page = Math.max(parseInt(req.query.page) || 1, 1);
     const limit = Math.min(parseInt(req.query.limit) || 10, 20);
 
-    const result = await getListingByOwnerIdService(userId, page, limit);
+    const result = await getListingsByOwnerIdService(userId, page, limit);
 
     return res.json({
       success: true,
@@ -43,10 +45,27 @@ export const getMyListings = async (req, res, next) => {
   }
 };
 
-export const getListingById = async (req, res, next) => {
+export const getPublishedListingById = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const result = await getListingByIdService(id);
+    const result = await getPublishedListingByIdService(id);
+
+    return res.json({
+      success: true,
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getMyListingById = async (req, res, next) => {
+  try {
+    const userId = req.user.id;
+    if (!userId) next(new AuthenticationError("No authorization header"));
+
+    const { id } = req.params;
+    const result = await getMyListingByIdService(id, userId);
 
     return res.json({
       success: true,
@@ -188,6 +207,14 @@ export const submitEditDraftListing = async (req, res, next) => {
   }
 };
 
+export const getListingForAdmin = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+  } catch (error) {
+    next(error);
+  }
+};
+
 // Admin approve bài của landlord
 export const approveListing = async (req, res, next) => {
   try {
@@ -231,6 +258,15 @@ export const renewListing = async (req, res, next) => {
 // Landlord xóa bài đăng PENDING/ PUBLISHED/ HIDDEN/ DRAFT/ REJECTED -> DELETED
 export const softDeleteListing = async (req, res, next) => {
   try {
+    const { id } = req.params;
+    const userId = req.user.id;
+
+    await softDeleteListingService(id, userId);
+
+    return res.status(200).json({
+      success: true,
+      message: "Xóa bài viết thành công.",
+    });
   } catch (error) {
     next(error);
   }

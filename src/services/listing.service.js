@@ -7,6 +7,9 @@ import sequelize from "../config/database.js";
 import { destroyImages, uploadImage } from "./upload.service.js";
 import { randomUUID } from "crypto";
 import { Op } from "sequelize";
+import AuthenticationError from "../errors/AuthenticationError.js";
+import BusinessError from "../errors/BusinessError.js";
+import AuthorizationError from "../errors/AuthorizationError.js";
 
 const { ListingType, Listing, ListingImage, ListingAmenity, Amenity, User } =
   db;
@@ -30,7 +33,60 @@ export const getAllListingTypesService = async () => {
 
 export const getListingByIdService = async (id) => {
   try {
-    const listing = await Listing.findByPk(id, {
+    const listing = await Listing.findOne({
+      where: {
+        id: id,
+      },
+      include: [
+        {
+          model: ListingImage,
+          as: "images",
+          attributes: ["image_url", "sort_order", "public_id"],
+        },
+        {
+          model: ListingType,
+          as: "listing_type",
+          attributes: ["code", "name"],
+        },
+        {
+          model: Amenity,
+          as: "amenities",
+          attributes: ["id", "name", "icon"],
+          through: { attributes: [] },
+        },
+        {
+          model: User,
+          as: "owner",
+          attributes: [
+            "id",
+            "full_name",
+            "email",
+            "phone_number",
+            "gender",
+            "avatar",
+          ],
+        },
+      ],
+    });
+
+    if (!listing) {
+      throw new NotFoundError("Không tìm thấy bài đăng.");
+    }
+
+    return listing;
+  } catch (error) {
+    if (error instanceof NotFoundError) throw error;
+    throw new DatabaseError("Lỗi khi lấy thông tin bài đăng");
+  }
+};
+
+export const getPublishedListingByIdService = async (id) => {
+  try {
+    const listing = await Listing.findOne({
+      where: {
+        id: id,
+        status: "PUBLISHED",
+      },
       include: [
         {
           model: ListingImage,
@@ -73,7 +129,58 @@ export const getListingByIdService = async (id) => {
   }
 };
 
-export const getListingByOwnerIdService = async (ownerId, page, limit) => {
+export const getMyListingByIdService = async (id, userId) => {
+  try {
+    const listing = await Listing.findOne({
+      where: {
+        id: id,
+        owner_id: userId,
+      },
+      include: [
+        {
+          model: ListingImage,
+          as: "images",
+          attributes: ["image_url", "sort_order", "public_id"],
+        },
+        {
+          model: ListingType,
+          as: "listing_type",
+          attributes: ["code", "name"],
+        },
+        {
+          model: Amenity,
+          as: "amenities",
+          attributes: ["id", "name", "icon"],
+          through: { attributes: [] },
+        },
+        {
+          model: User,
+          as: "owner",
+          attributes: [
+            "id",
+            "full_name",
+            "email",
+            "phone_number",
+            "gender",
+            "avatar",
+          ],
+        },
+      ],
+    });
+
+    if (!listing) {
+      throw new NotFoundError("Không tìm thấy bài đăng.");
+    }
+
+    return listing;
+  } catch (error) {
+    if (error instanceof NotFoundError) throw error;
+
+    throw new DatabaseError("Lỗi khi lấy thông tin bài đăng");
+  }
+};
+
+export const getListingsByOwnerIdService = async (ownerId, page, limit) => {
   const offset = (page - 1) * limit;
   const result = await Listing.findAndCountAll({
     where: {
@@ -647,14 +754,60 @@ export const submitDraftListingService = async (listingId, images) => {
 
 export const createEditDraftService = async (listingId, proposedChanges) => {};
 
-export const approveListingService = async (listingId) => {};
-
-export const rejectListingService = async (listingId, reason) => {};
-
 export const hideListingService = async (listingId) => {};
 
 export const showListingService = async (listingId) => {};
 
-export const softDeleteListingService = async (listingId) => {};
+export const getListingForAdmin = async (listingId) => {};
+
+export const approveListingService = async (listingId) => {};
+
+export const rejectListingService = async (listingId, reason) => {};
+
+export const softDeleteListingService = async (listingId, userId) => {
+  const t = await sequelize.transaction();
+  try {
+    const listing = await Listing.findByPk(listingId, {
+      transaction: t,
+      lock: t.LOCK.UPDATE,
+    });
+
+    if (listing.owner_id !== userId)
+      throw new AuthorizationError("Bạn không có quyền xóa bài của người khác");
+
+    if (listing.status === "DELETED")
+      throw new BusinessError("Bài viết đã bị xóa trước đó");
+
+    const notAllowedStatus = ["PENDING"];
+
+    if (notAllowedStatus.includes(listing.status))
+      throw new BusinessError("Bạn không thể xóa bài viết đang được duyệt");
+
+    await listing.update(
+      { status: "DELETED", deleted_at: sequelize.fn("NOW") },
+      { transaction: t }
+    );
+
+    await t.commit();
+    return true;
+  } catch (error) {
+    await t.rollback();
+
+    if (
+      error instanceof NotFoundError ||
+      error instanceof AuthenticationError ||
+      error instanceof AuthorizationError ||
+      error instanceof BusinessError
+    ) {
+      throw error;
+    }
+
+    if (error.name?.startsWith("Sequelize")) {
+      throw new DatabaseError(`Lỗi cơ sở dữ liệu: ${error.message}`);
+    }
+
+    throw new DatabaseError("Lỗi không xác định khi cập nhật listing");
+  }
+};
 
 export const hardDeleteListingService = async (listingId) => {};

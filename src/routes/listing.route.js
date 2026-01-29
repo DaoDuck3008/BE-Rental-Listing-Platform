@@ -3,7 +3,7 @@ import {
   createDraftListing,
   createListing,
   getAllListingTypes,
-  getListingById,
+  getPublishedListingById,
   getMyListings,
   hideListing,
   renewListing,
@@ -14,6 +14,7 @@ import {
   updateDraftListing,
   updatePendingListing,
   updatePublisedListing,
+  getMyListingById,
 } from "../controllers/listing.controller.js";
 import { protect, requireRole } from "../middlewares/auth.middleware.js";
 import { upload } from "../middlewares/upload.middleware.js";
@@ -27,7 +28,13 @@ const router = express.Router();
 
 router.get("/listing_types", getAllListingTypes);
 router.get("/my-listings", protect, requireRole(["LANDLORD"]), getMyListings);
-router.get("/:id", getListingById);
+router.get(
+  "/my-listings/:id",
+  protect,
+  requireRole(["LANDLORD"]),
+  getMyListingById
+);
+router.get("/:id", getPublishedListingById);
 
 router.post(
   "/create",
@@ -77,6 +84,6 @@ router.post("/:id/show", showListing);
 router.post("/:id/edit-draft", updateDraftListing);
 router.post("/:id/edit-draft/submit", submitEditDraftListing);
 router.post("/:id/renew", renewListing);
-router.delete("/:id", softDeleteListing);
+router.delete("/:id", protect, requireRole(["LANDLORD"]), softDeleteListing);
 
 export default router;

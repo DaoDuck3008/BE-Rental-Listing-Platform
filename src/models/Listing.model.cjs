@@ -33,6 +33,16 @@ module.exports = (sequelize, DataTypes) => {
         onDelete: "RESTRICT",
         onUpdate: "CASCADE",
       });
+
+      // 1 EDIT-DRAFT Listing -> 1 Parent Listing
+      Listing.hasOne(Listing, {
+        as: "editDraft",
+        foreignKey: "parent_listing_id",
+      });
+      Listing.belongsTo(Listing, {
+        as: "parentListing",
+        foreignKey: "parent_listing_id",
+      });
     }
   }
 
@@ -49,6 +59,10 @@ module.exports = (sequelize, DataTypes) => {
         allowNull: false,
       },
       listing_type_id: {
+        type: DataTypes.UUID,
+        allowNull: true,
+      },
+      parent_listing_id: {
         type: DataTypes.UUID,
         allowNull: true,
       },

@@ -169,6 +169,16 @@ module.exports = {
         onDelete: "RESTRICT",
         onUpdate: "CASCADE",
       },
+      parent_listing_id: {
+        type: Sequelize.UUID,
+        allowNull: true,
+        references: {
+          model: "listings",
+          key: "id",
+        },
+        onDelete: "RESTRICT",
+        onUpdate: "RESTRICT",
+      },
       title: {
         type: Sequelize.TEXT,
         allowNull: true,

@@ -31,12 +31,16 @@ export const getAllListingTypesService = async () => {
   }
 };
 
-export const getListingByIdService = async (id) => {
+export const getListingByIdService = async (id, options = {}) => {
   try {
+    const { transaction, lock } = options;
+
     const listing = await Listing.findOne({
       where: {
         id: id,
       },
+      transaction,
+      lock,
       include: [
         {
           model: ListingImage,
@@ -185,7 +189,7 @@ export const getListingsByOwnerIdService = async (ownerId, page, limit) => {
   const result = await Listing.findAndCountAll({
     where: {
       owner_id: ownerId,
-      status: { [Op.notIn]: ["DELETED"] },
+      status: { [Op.notIn]: ["DELETED", "HIDDEN_FROM_USER"] },
     },
     attributes: [
       "id",
@@ -229,7 +233,8 @@ export const createListingService = async (
   listingData,
   images = [],
   coverImageIndex = 0,
-  status = "PENDING"
+  status = "PENDING",
+  parentListingId = ""
 ) => {
   // Validate images (not handled by Zod middleware)
   // For DRAFT, images are optional. For others, at least 1 image is required.
@@ -282,11 +287,26 @@ export const createListingService = async (
       }
     }
 
+    // Nếu như la tạo EDIT-DRAFT thì đổi status của parent listing sang HIDDEN_FROM_USER
+    if (parentListingId) {
+      const parentListing = await Listing.findByPk(parentListingId, {
+        transaction: t,
+        lock: t.LOCK.UPDATE,
+      });
+      if (parentListing) {
+        await parentListing.update(
+          { status: "HIDDEN_FROM_USER" },
+          { transaction: t }
+        );
+      }
+    }
+
     // Create listing
     const listing = await Listing.create(
       {
         owner_id: userId,
         listing_type_id: listingTypeId,
+        parent_listing_id: parentListingId,
         title: listingData.title?.trim() || null,
         description: listingData.description?.trim() || null,
         price: listingData.price != null ? parseFloat(listingData.price) : null,
@@ -465,12 +485,18 @@ export const updateListingService = async (
     // 1. Tìm listing và kiểm tra quyền sở hữu
     const listing = await Listing.findOne({
       where: { id: listingId, owner_id: userId },
+      transaction: t,
+      lock: t.LOCK.UPDATE,
     });
 
     if (!listing) {
       throw new NotFoundError(
         "Không tìm thấy bài đăng hoặc bạn không có quyền chỉnh sửa."
       );
+    }
+
+    if (listing.status === "PENDING") {
+      throw new BusinessError("Bạn không thể sửa khi bài viết đang được duyệt");
     }
 
     // 2. Định nghĩa các nhóm trường
@@ -495,24 +521,18 @@ export const updateListingService = async (
 
     // 3. Áp dụng quy tắc theo status
     const status = listing.status;
-    if (["DRAFT", "PENDING", "EDIT_DRAFT"].includes(status)) {
+    if (["DRAFT", "EDIT_DRAFT"].includes(status)) {
       allowedFields = [...lightFields, ...heavyFields];
       canUpdateImages = true;
       canUpdateAmenities = true;
     } else if (status === "PUBLISHED") {
       allowedFields = lightFields;
       canUpdateAmenities = true;
-      canUpdateImages = false; // PUBLISHED không được sửa ảnh trực tiếp
-    } else if (status === "HIDDEN") {
-      if (listing.views == 0) {
-        allowedFields = [...lightFields, ...heavyFields];
-        canUpdateImages = true;
-        canUpdateAmenities = true;
-      } else {
-        allowedFields = lightFields;
-        canUpdateAmenities = true;
-        canUpdateImages = false;
-      }
+      canUpdateImages = true;
+    } else {
+      allowedFields = lightFields;
+      canUpdateAmenities = true;
+      canUpdateImages = false;
     }
 
     // 4. Lọc dữ liệu cập nhật
@@ -573,29 +593,31 @@ export const updateListingService = async (
     }
 
     // Xóa ảnh cũ rồi tải anh mới lên
-    const existingImages = await ListingImage.findAll({
-      where: { listing_id: listingId },
-    });
-    const publicIdsToDelete = existingImages
-      .map((img) => img.public_id)
-      .filter(Boolean);
+    if (canUpdateImages) {
+      const existingImages = await ListingImage.findAll({
+        where: { listing_id: listingId },
+        transaction: t,
+      });
+      const publicIdsToDelete = existingImages
+        .map((img) => img.public_id)
+        .filter(Boolean);
 
-    if (publicIdsToDelete.length > 0) {
-      try {
-        await destroyImages("listings", publicIdsToDelete);
-      } catch (destroyError) {
-        console.error(
-          "Failed to destroy old images on Cloudinary:",
-          destroyError
-        );
+      if (publicIdsToDelete.length > 0) {
+        try {
+          await destroyImages("listings", publicIdsToDelete);
+        } catch (destroyError) {
+          throw new UploadError(
+            `Lỗi khi xóa ảnh cũ trên Cloudinary: ${destroyError.message}`
+          );
+        }
       }
-    }
 
-    // Xóa ảnh cũ records
-    await ListingImage.destroy({
-      where: { listing_id: listingId },
-      transaction: t,
-    });
+      // Xóa ảnh cũ records
+      await ListingImage.destroy({
+        where: { listing_id: listingId },
+        transaction: t,
+      });
+    }
 
     // 7. Cập nhật Hình ảnh (Images)
     if (canUpdateImages && images && images.length > 0) {
@@ -688,7 +710,8 @@ export const updateListingService = async (
       error instanceof NotFoundError ||
       error instanceof ValidationError ||
       error instanceof UploadError ||
-      error instanceof AuthenticationError
+      error instanceof AuthenticationError ||
+      error instanceof BusinessError
     ) {
       throw error;
     }
@@ -752,17 +775,287 @@ export const submitDraftListingService = async (listingId, images) => {
   }
 };
 
-export const createEditDraftService = async (listingId, proposedChanges) => {};
+export const hideListingService = async (listingId, userId) => {
+  const listing = await Listing.findOne({
+    where: { id: listingId, owner_id: userId },
+  });
+  if (!listing) throw new NotFoundError("Không tìm thấy bài đăng.");
+  if (listing.status !== "PUBLISHED")
+    throw new BusinessError("Chỉ có thể ẩn bài đăng đang hiển thị.");
 
-export const hideListingService = async (listingId) => {};
+  await listing.update({ status: "HIDDEN" });
+  return listing;
+};
 
-export const showListingService = async (listingId) => {};
+export const showListingService = async (listingId, userId) => {
+  const listing = await Listing.findOne({
+    where: { id: listingId, owner_id: userId },
+  });
+  if (!listing) throw new NotFoundError("Không tìm thấy bài đăng.");
+  if (listing.status !== "HIDDEN")
+    throw new BusinessError("Bài đăng này không bị ẩn.");
 
-export const getListingForAdmin = async (listingId) => {};
+  await listing.update({ status: "PUBLISHED" });
+  return listing;
+};
 
-export const approveListingService = async (listingId) => {};
+export const getListingForAdmin = async (listingId) => {
+  const listing = await getListingByIdService(listingId);
+  return listing;
+};
 
-export const rejectListingService = async (listingId, reason) => {};
+// Admin duyệt bài mới của landlord (PENDING -> PUBLISHED)
+export const approveListingService = async (listingId) => {
+  const listing = await Listing.findByPk(listingId);
+  if (!listing) throw new NotFoundError("Bài đăng không tồn tại.");
+  if (listing.status !== "PENDING")
+    throw new BusinessError("Chỉ có thể duyệt bài đăng đang chờ duyệt.");
+
+  await listing.update({ status: "PUBLISHED" });
+  return listing;
+};
+
+// Admin xác nhận duyệt thay đổi bài viết từ Edit Draft
+export const approveEditDraftListingService = async (listingId) => {
+  const t = await sequelize.transaction();
+  try {
+    // 1. Lấy thông tin bản nháp chỉnh sửa (EditDraft)
+    const editDraftListing = await Listing.findByPk(listingId, {
+      transaction: t,
+      lock: t.LOCK.UPDATE,
+    });
+
+    if (!editDraftListing) {
+      throw new NotFoundError("Bài đăng không tồn tại.");
+    }
+
+    if (!editDraftListing.parent_listing_id || editDraftListing.status !== "EDIT_DRAFT") {
+      throw new BusinessError("Đây không phải là bản thảo chỉnh sửa hợp lệ hoặc trạng thái không đúng.");
+    }
+
+    // 2. Lấy thông tin bài đăng gốc
+    const parentListing = await Listing.findByPk(
+      editDraftListing.parent_listing_id,
+      {
+        transaction: t,
+        lock: t.LOCK.UPDATE,
+      }
+    );
+
+    if (!parentListing) {
+      throw new NotFoundError("Không tìm thấy bài đăng gốc.");
+    }
+
+    // 3. Ghi đè các trường chính từ EditDraft sang ParentListing
+    // Ghi đè các trường ở bảng chính Listing đổi status từ HIDDEN_FROM_USER -> PUBLISHED
+    const fieldsToOverride = [
+      "listing_type_id",
+      "title",
+      "description",
+      "price",
+      "area",
+      "bedrooms",
+      "bathrooms",
+      "capacity",
+      "province_code",
+      "ward_code",
+      "address",
+      "longitude",
+      "latitude",
+      "show_phone_number",
+    ];
+
+    const updateData = {};
+    fieldsToOverride.forEach((field) => {
+      updateData[field] = editDraftListing[field];
+    });
+
+    updateData.status = "PUBLISHED";
+    await parentListing.update(updateData, { transaction: t });
+
+    //4. Nếu editDraftListing có dữ liệu phần images thì xóa images cũ trên cloud ở parentListing và ghi đè bản mới vào CSDL
+    const draftImages = await ListingImage.findAll({
+      where: { listing_id: editDraftListing.id },
+      transaction: t,
+    });
+
+    if (draftImages && draftImages.length > 0) {
+      const oldParentImages = await ListingImage.findAll({
+        where: { listing_id: parentListing.id },
+        transaction: t,
+      });
+
+      const publicIdsToDelete = oldParentImages
+        .map((img) => img.public_id)
+        .filter(Boolean);
+
+      if (publicIdsToDelete.length > 0) {
+        try {
+          // Xóa ảnh trên Cloudinary
+          await destroyImages("listings", publicIdsToDelete);
+        } catch (err) {
+          throw new UploadError(
+            `Lỗi khi xóa ảnh bài gốc trên Cloudinary: ${err.message}`
+          );
+        }
+      }
+
+      // Xóa bản ghi ảnh cũ của parent
+      await ListingImage.destroy({
+        where: { listing_id: parentListing.id },
+        transaction: t,
+      });
+
+      // Tạo bản ghi ảnh mới cho parent từ dữ liệu của draft
+      await ListingImage.bulkCreate(
+        draftImages.map((img) => ({
+          listing_id: parentListing.id,
+          image_url: img.image_url,
+          public_id: img.public_id,
+          sort_order: img.sort_order,
+        })),
+        { transaction: t }
+      );
+    }
+
+    //5. Nếu editDraftListing có dữ liệu phần amenities thì ghi đè dữ liệu mới ở parentListing
+    const draftAmenities = await ListingAmenity.findAll({
+      where: { listing_id: editDraftListing.id },
+      transaction: t,
+    });
+
+    if (draftAmenities && draftAmenities.length > 0) {
+      // Xóa tiện ích cũ của bài gốc
+      await ListingAmenity.destroy({
+        where: { listing_id: parentListing.id },
+        transaction: t,
+      });
+
+      // Tạo tiện ích mới cho parent từ dữ liệu của draft
+      await ListingAmenity.bulkCreate(
+        draftAmenities.map((am) => ({
+          listing_id: parentListing.id,
+          amenity_id: am.amenity_id,
+        })),
+        { transaction: t }
+      );
+    }
+
+    // 6. Xóa EditDraft listing (không xóa ảnh trên cloud vì đã chuyển sang parent)
+    await editDraftListing.destroy({ transaction: t });
+
+    await t.commit();
+    return parentListing;
+  } catch (error) {
+    if (t) await t.rollback();
+
+    if (
+      error instanceof BusinessError ||
+      error instanceof AuthenticationError ||
+      error instanceof AuthorizationError ||
+      error instanceof ValidationError ||
+      error instanceof UploadError ||
+      error instanceof NotFoundError
+    ) {
+      throw error;
+    }
+
+    if (error.name === "SequelizeForeignKeyConstraintError") {
+      throw new ValidationError("Dữ liệu tham chiếu không hợp lệ");
+    }
+
+    if (error.name?.startsWith("Sequelize")) {
+      throw new DatabaseError(`Lỗi cơ sở dữ liệu: ${error.message}`);
+    }
+
+    throw new DatabaseError("Lỗi không xác định khi duyệt bài đăng");
+  }
+};
+
+// Admin từ chối bài mới của landlord (PENDING -> REJECTED)
+export const rejectListingService = async (listingId, reason) => {
+  const listing = await Listing.findByPk(listingId);
+  if (!listing) throw new NotFoundError("Bài đăng không tồn tại.");
+  if (listing.status !== "PENDING")
+    throw new BusinessError("Chỉ có thể từ chối bài đăng đang chờ duyệt.");
+
+  await listing.update({ status: "REJECTED" });
+  return listing;
+};
+
+// Admin từ chối bản chỉnh sửa (Xóa EDIT_DRAFT, khôi phục Parent sang PUBLISHED)
+export const rejectEditDraftListingService = async (listingId, reason) => {
+  const t = await sequelize.transaction();
+  try {
+    const listing = await Listing.findByPk(listingId, {
+      transaction: t,
+      lock: t.LOCK.UPDATE,
+    });
+
+    if (!listing) {
+      throw new NotFoundError("Bài đăng không tồn tại.");
+    }
+
+    if (!listing.parent_listing_id || listing.status !== "EDIT_DRAFT") {
+      throw new BusinessError("Đây không phải là bản thảo chỉnh sửa hợp lệ hoặc trạng thái không đúng.");
+    }
+
+    // 1. Khôi phục bài đăng gốc thành PUBLISHED
+    const parentListing = await Listing.findByPk(listing.parent_listing_id, {
+      transaction: t,
+      lock: t.LOCK.UPDATE,
+    });
+
+    if (parentListing) {
+      await parentListing.update({ status: "PUBLISHED" }, { transaction: t });
+    }
+
+    // 2. Xóa ảnh của bản nháp trên Cloudinary
+    const draftImages = await ListingImage.findAll({
+      where: { listing_id: listing.id },
+      transaction: t,
+    });
+
+    const publicIdsToDelete = draftImages
+      .map((img) => img.public_id)
+      .filter(Boolean);
+
+    if (publicIdsToDelete.length > 0) {
+      try {
+        await destroyImages("listings", publicIdsToDelete);
+      } catch (err) {
+        throw new UploadError(
+          `Lỗi khi xóa ảnh bản nháp trên Cloudinary: ${err.message}`
+        );
+      }
+    }
+
+    // 3. Xóa bản ghi bản nháp hoàn toàn
+    await listing.destroy({ transaction: t });
+
+    await t.commit();
+    return true;
+  } catch (error) {
+    if (t) await t.rollback();
+
+    if (
+      error instanceof BusinessError ||
+      error instanceof AuthenticationError ||
+      error instanceof AuthorizationError ||
+      error instanceof ValidationError ||
+      error instanceof UploadError ||
+      error instanceof NotFoundError
+    ) {
+      throw error;
+    }
+
+    if (error.name?.startsWith("Sequelize")) {
+      throw new DatabaseError(`Lỗi cơ sở dữ liệu: ${error.message}`);
+    }
+
+    throw new DatabaseError("Lỗi không xác định khi từ chối bài đăng");
+  }
+};
 
 export const softDeleteListingService = async (listingId, userId) => {
   const t = await sequelize.transaction();
@@ -797,7 +1090,8 @@ export const softDeleteListingService = async (listingId, userId) => {
       error instanceof NotFoundError ||
       error instanceof AuthenticationError ||
       error instanceof AuthorizationError ||
-      error instanceof BusinessError
+      error instanceof BusinessError ||
+      error instanceof UploadError
     ) {
       throw error;
     }

@@ -81,3 +81,30 @@ export const createDraftListingSchema = z.object({
 
   showPhoneNumber: z.coerce.boolean().optional(),
 });
+
+export const updateSoftListingSchema = z.object({
+  title: z
+    .string()
+    .min(10, "Tiêu đề phải dài ít nhất 10 ký tự.")
+    .max(255, "Tiêu đề không được vượt quá 255 ký tự.")
+    .optional(),
+
+  description: z
+    .string()
+    .min(10, "Mô tả phải dài ít nhất 10 ký tự.")
+    .optional(),
+
+  amenities: z
+    .string()
+    .optional()
+    .transform((val) => {
+      if (!val || val === "") return [];
+      if (Array.isArray(val)) return val;
+      return val.split(",").map((id) => id.trim());
+    })
+    .pipe(z.array(z.string())),
+
+  coverImageIndex: z.coerce.number().min(0).optional(),
+});
+
+export const updateHardListingSchema = createListingSchema.partial();

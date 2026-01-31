@@ -2,6 +2,7 @@ import db from "../models/index.js";
 import { uploadImage, destroyImage } from "./upload.service.js";
 import { googleRegisterService } from "./auth.service.js";
 import NotFoundError from "../errors/NotFoundError.js";
+import UploadError from "../errors/UploadError.js";
 
 const { User, Role } = db;
 
@@ -57,13 +58,21 @@ export const updateUserProfile = async (userId, userData, userFile) => {
   if (userFile) {
     // xóa ảnh cũ trên cloudinary nếu có
     if (user.avatar) {
-      const publicId = `avatar_${userId}`;
-      await destroyImage("avatars", publicId);
+      try {
+        const publicId = `avatar_${userId}`;
+        await destroyImage("avatars", publicId);
+      } catch (err) {
+        throw new UploadError(`Lỗi khi xóa ảnh đại diện cũ: ${err.message}`);
+      }
     }
 
     // upload ảnh mới lên cloudinary
-    const image = await uploadImage(userFile, "avatars", `avatar_${userId}`);
-    updateData.avatar = image.secure_url;
+    try {
+      const image = await uploadImage(userFile, "avatars", `avatar_${userId}`);
+      updateData.avatar = image.secure_url;
+    } catch (err) {
+      throw new UploadError(`Lỗi khi tải ảnh đại diện mới: ${err.message}`);
+    }
   }
 
   if (userData.role) {

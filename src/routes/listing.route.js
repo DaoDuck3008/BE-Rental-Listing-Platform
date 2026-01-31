@@ -10,11 +10,10 @@ import {
   showListing,
   softDeleteListing,
   submitDraftListing,
-  submitEditDraftListing,
   updateDraftListing,
-  updatePendingListing,
-  updatePublisedListing,
+  updateSoftPublisedListing,
   getMyListingById,
+  updateHardPublishedListing,
 } from "../controllers/listing.controller.js";
 import { protect, requireRole } from "../middlewares/auth.middleware.js";
 import { upload } from "../middlewares/upload.middleware.js";
@@ -22,6 +21,8 @@ import { validate } from "../middlewares/validate.middleware.js";
 import {
   createDraftListingSchema,
   createListingSchema,
+  updateSoftListingSchema,
+  updateHardListingSchema,
 } from "../validators/listing.validator.js";
 
 const router = express.Router();
@@ -53,8 +54,22 @@ router.post(
   createDraftListing
 );
 
-router.patch("/:id/pending", updatePendingListing);
-router.patch("/:id/publised", updatePublisedListing);
+router.patch(
+  "/:id/update-soft",
+  protect,
+  requireRole(["LANDLORD"]),
+  upload.array("files", 15),
+  validate(updateSoftListingSchema),
+  updateSoftPublisedListing
+);
+router.patch(
+  "/:id/update-hard",
+  protect,
+  requireRole(["LANDLORD"]),
+  upload.array("files", 15),
+  validate(updateHardListingSchema),
+  updateHardPublishedListing
+);
 router.patch(
   "/:id/draft",
   protect,
@@ -81,8 +96,6 @@ router.post(
 );
 router.post("/:id/hide", hideListing);
 router.post("/:id/show", showListing);
-router.post("/:id/edit-draft", updateDraftListing);
-router.post("/:id/edit-draft/submit", submitEditDraftListing);
 router.post("/:id/renew", renewListing);
 router.delete("/:id", protect, requireRole(["LANDLORD"]), softDeleteListing);
 

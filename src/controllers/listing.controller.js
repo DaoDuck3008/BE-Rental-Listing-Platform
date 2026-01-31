@@ -131,16 +131,55 @@ export const createDraftListing = async (req, res, next) => {
   }
 };
 
-export const updatePendingListing = async (req, res, next) => {
+// Landlord muốn sửa lại thông tin khi đã PUBLISHED. CHỈ có thể đổi title, description, contact, amenities
+export const updateSoftPublisedListing = async (req, res, next) => {
   try {
+    const { id } = req.params;
+    const userId = req.user.id;
+    const data = req.body;
+    const images = req.files;
+    const coverImageIndex = parseInt(data.coverImageIndex) || 0;
+    const result = await updateListingService(
+      id,
+      userId,
+      data,
+      images,
+      coverImageIndex
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Cập nhật bài viết thành công",
+      data: result,
+    });
   } catch (error) {
     next(error);
   }
 };
 
-// Landlord muốn sửa lại thông tin khi đã PUBLISHED. CHỈ có thể đổi title, description, contact, amenities
-export const updatePublisedListing = async (req, res, next) => {
+// LandLord muốn sửa bài đăng PUBLISHED -> tạo mới EDIT_DRAFT. Chỉnh sửa nặng (price, area, bedrooms, bathrooms, images)
+export const updateHardPublishedListing = async (req, res, next) => {
   try {
+    const { id } = req.params;
+    const userId = req.user.id;
+    const data = req.body;
+    const images = req.files;
+    const coverImageIndex = parseInt(data.coverImageIndex) || 0;
+
+    const result = await createListingService(
+      userId,
+      data,
+      images,
+      coverImageIndex,
+      "EDIT_DRAFT",
+      id
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Cập nhật bài viết thành công",
+      data: result,
+    });
   } catch (error) {
     next(error);
   }
@@ -191,46 +230,6 @@ export const submitDraftListing = async (req, res, next) => {
   }
 };
 
-// LandLord muốn sửa bài đăng PUBLISHED -> tạo mới EDIT_DRAFT. Chỉnh sửa nặng (price, area, bedrooms, bathrooms, images)
-export const createEditDraftListing = async (req, res, next) => {
-  try {
-  } catch (error) {
-    next(error);
-  }
-};
-
-// LANDLORD muốn đăng bài từ EDIT-DRAFT -> PENDING
-export const submitEditDraftListing = async (req, res, next) => {
-  try {
-  } catch (error) {
-    next(error);
-  }
-};
-
-export const getListingForAdmin = async (req, res, next) => {
-  try {
-    const { id } = req.params;
-  } catch (error) {
-    next(error);
-  }
-};
-
-// Admin approve bài của landlord
-export const approveListing = async (req, res, next) => {
-  try {
-  } catch (error) {
-    next(error);
-  }
-};
-
-// Admin từ chối bài của Landlord PENDING -> REJECTED
-export const rejectListing = async (req, res, next) => {
-  try {
-  } catch (error) {
-    next(error);
-  }
-};
-
 // Landlord không muốn hiển thị bài lên new feeds nữa PUBLISHED -> HIDDEN
 export const hideListing = async (req, res, next) => {
   try {
@@ -267,13 +266,6 @@ export const softDeleteListing = async (req, res, next) => {
       success: true,
       message: "Xóa bài viết thành công.",
     });
-  } catch (error) {
-    next(error);
-  }
-};
-
-export const hardDeleteListing = async (req, res, next) => {
-  try {
   } catch (error) {
     next(error);
   }

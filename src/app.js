@@ -12,6 +12,7 @@ import authRoutes from "./routes/auth.route.js";
 import userRoutes from "./routes/user.route.js";
 import amenitiesRoutes from "./routes/amenities.route.js";
 import listingRoutes from "./routes/listing.route.js";
+import adminRoutes from "./routes/admin.route.js";
 
 dotenv.config();
 
@@ -50,6 +51,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/amenities", amenitiesRoutes);
 app.use("/api/listings", listingRoutes);
+app.use("/api/admin", adminRoutes);
 
 // HANDLING ERROR
 app.use((err, req, res, next) => {

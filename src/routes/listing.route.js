@@ -94,9 +94,9 @@ router.post(
   // validate(createListingSchema),
   submitDraftListing
 );
-router.post("/:id/hide", hideListing);
-router.post("/:id/show", showListing);
-router.post("/:id/renew", renewListing);
+router.post("/:id/hide", protect, requireRole(["LANDLORD"]), hideListing);
+router.post("/:id/show", protect, requireRole(["LANDLORD"]), showListing);
+router.post("/:id/renew", protect, requireRole(["LANDLORD"]), renewListing);
 router.delete("/:id", protect, requireRole(["LANDLORD"]), softDeleteListing);
 
 export default router;

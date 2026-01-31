@@ -7,6 +7,8 @@ import {
   updateListingService,
   getMyListingByIdService,
   softDeleteListingService,
+  hideListingService,
+  showListingService,
 } from "../services/listing.service.js";
 import AuthenticationError from "../errors/AuthenticationError.js";
 
@@ -233,6 +235,15 @@ export const submitDraftListing = async (req, res, next) => {
 // Landlord không muốn hiển thị bài lên new feeds nữa PUBLISHED -> HIDDEN
 export const hideListing = async (req, res, next) => {
   try {
+    const { id } = req.params;
+    const userId = req.user.id;
+
+    await hideListingService(id, userId);
+
+    return res.status(200).json({
+      success: true,
+      message: `Tạm Ẩn bài viết #${id} thành công.`,
+    });
   } catch (error) {
     next(error);
   }
@@ -241,6 +252,15 @@ export const hideListing = async (req, res, next) => {
 // Landlord hiển thị lại bài đăng HIDDEN -> PUBLISHED (Không được chỉnh sửa)
 export const showListing = async (req, res, next) => {
   try {
+    const { id } = req.params;
+    const userId = req.user.id;
+
+    await showListingService(id, userId);
+
+    return res.status(200).json({
+      success: true,
+      message: `Hiển thị bài viết #${id} thành công.`,
+    });
   } catch (error) {
     next(error);
   }

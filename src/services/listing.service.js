@@ -799,6 +799,8 @@ export const showListingService = async (listingId, userId) => {
   return listing;
 };
 
+export const getAllListingByAdmin = async () => {};
+
 export const getListingForAdmin = async (listingId) => {
   const listing = await getListingByIdService(listingId);
   return listing;
@@ -829,8 +831,13 @@ export const approveEditDraftListingService = async (listingId) => {
       throw new NotFoundError("Bài đăng không tồn tại.");
     }
 
-    if (!editDraftListing.parent_listing_id || editDraftListing.status !== "EDIT_DRAFT") {
-      throw new BusinessError("Đây không phải là bản thảo chỉnh sửa hợp lệ hoặc trạng thái không đúng.");
+    if (
+      !editDraftListing.parent_listing_id ||
+      editDraftListing.status !== "EDIT_DRAFT"
+    ) {
+      throw new BusinessError(
+        "Đây không phải là bản thảo chỉnh sửa hợp lệ hoặc trạng thái không đúng."
+      );
     }
 
     // 2. Lấy thông tin bài đăng gốc
@@ -997,7 +1004,9 @@ export const rejectEditDraftListingService = async (listingId, reason) => {
     }
 
     if (!listing.parent_listing_id || listing.status !== "EDIT_DRAFT") {
-      throw new BusinessError("Đây không phải là bản thảo chỉnh sửa hợp lệ hoặc trạng thái không đúng.");
+      throw new BusinessError(
+        "Đây không phải là bản thảo chỉnh sửa hợp lệ hoặc trạng thái không đúng."
+      );
     }
 
     // 1. Khôi phục bài đăng gốc thành PUBLISHED
@@ -1057,6 +1066,7 @@ export const rejectEditDraftListingService = async (listingId, reason) => {
   }
 };
 
+// Landlord xóa bài viết (DELETED) nhưng vẫn lưu trong CSDL
 export const softDeleteListingService = async (listingId, userId) => {
   const t = await sequelize.transaction();
   try {
@@ -1104,4 +1114,5 @@ export const softDeleteListingService = async (listingId, userId) => {
   }
 };
 
+// Admin xóa bài viết vĩnh viễn khỏi CSDL
 export const hardDeleteListingService = async (listingId) => {};

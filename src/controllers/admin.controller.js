@@ -4,7 +4,37 @@ import {
   rejectListingService,
   rejectEditDraftListingService,
   getListingByIdService,
+  getAllModatedListingsService,
 } from "../services/listing.service.js";
+
+export const getAllListingsForAdmin = async (req, res, next) => {
+  try {
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getAllModeratedListingsForAdmin = async (req, res, next) => {
+  try {
+    const { page, limit, status, keyword } = req.query;
+
+    const result = await getAllModatedListingsService(
+      page,
+      limit,
+      status,
+      keyword
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Lấy các bài đăng cần duyệt thành công",
+      data: result.data,
+      pagination: result.pagination,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
 
 export const getListingForAdmin = async (req, res, next) => {
   try {

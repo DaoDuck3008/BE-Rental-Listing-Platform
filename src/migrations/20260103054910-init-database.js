@@ -256,6 +256,10 @@ module.exports = {
         field: "expired_at",
         allowNull: true,
       },
+      published_at: {
+        type: Sequelize.DATE,
+        allowNull: true,
+      },
       deletedAt: {
         type: Sequelize.DATE,
         field: "deleted_at",

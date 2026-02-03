@@ -61,13 +61,28 @@ export const getListingByIdService = async (id, options = {}) => {
         {
           model: User,
           as: "owner",
-          attributes: [
-            "id",
-            "full_name",
-            "email",
-            "phone_number",
-            "gender",
-            "avatar",
+          attributes: ["id", "full_name", "phone_number", "gender", "avatar"],
+        },
+        {
+          model: Listing,
+          as: "parentListing",
+          include: [
+            {
+              model: ListingImage,
+              as: "images",
+              attributes: ["image_url", "sort_order", "public_id"],
+            },
+            {
+              model: ListingType,
+              as: "listing_type",
+              attributes: ["code", "name"],
+            },
+            {
+              model: Amenity,
+              as: "amenities",
+              attributes: ["id", "name", "icon"],
+              through: { attributes: [] },
+            },
           ],
         },
       ],
@@ -160,14 +175,7 @@ export const getMyListingByIdService = async (id, userId) => {
         {
           model: User,
           as: "owner",
-          attributes: [
-            "id",
-            "full_name",
-            "email",
-            "phone_number",
-            "gender",
-            "avatar",
-          ],
+          attributes: ["id", "full_name", "phone_number", "gender", "avatar"],
         },
       ],
     });
@@ -799,11 +807,80 @@ export const showListingService = async (listingId, userId) => {
   return listing;
 };
 
-export const getAllListingByAdmin = async () => {};
+export const getAllListingByAdminService = async () => {};
 
-export const getListingForAdmin = async (listingId) => {
-  const listing = await getListingByIdService(listingId);
-  return listing;
+export const getAllModatedListingsService = async (
+  page = 1,
+  limit = 10,
+  status,
+  keyword
+) => {
+  const p = parseInt(page);
+  const l = parseInt(limit);
+  const offset = (p - 1) * l;
+
+  const whereClause = {
+    status: status ? status : { [Op.in]: ["PENDING", "EDIT_DRAFT"] },
+  };
+
+  const include = [
+    {
+      model: ListingImage,
+      as: "images",
+      attributes: ["image_url", "sort_order", "public_id"],
+    },
+    {
+      model: ListingType,
+      as: "listing_type",
+      attributes: ["code", "name"],
+    },
+    {
+      model: User,
+      as: "owner",
+      attributes: ["full_name", "avatar", "email"],
+    },
+  ];
+
+  if (keyword) {
+    whereClause[Op.or] = [
+      { title: { [Op.substring]: keyword } },
+      { address: { [Op.substring]: keyword } },
+      { "$owner.full_name$": { [Op.substring]: keyword } },
+      { "$owner.email$": { [Op.substring]: keyword } },
+    ];
+  }
+
+  const result = await Listing.findAndCountAll({
+    where: whereClause,
+    attributes: [
+      "id",
+      "title",
+      "address",
+      "price",
+      "status",
+      "created_at",
+      "updated_at",
+    ],
+    include: include,
+    order: [
+      ["created_at", "DESC"],
+      ["id", "DESC"],
+    ],
+    limit: l,
+    offset: offset,
+    distinct: true,
+    subQuery: false,
+  });
+
+  return {
+    data: result.rows,
+    pagination: {
+      page: p,
+      limit: l,
+      totalItems: result.count,
+      totalPages: Math.ceil(result.count / l),
+    },
+  };
 };
 
 // Admin duyệt bài mới của landlord (PENDING -> PUBLISHED)
@@ -813,7 +890,11 @@ export const approveListingService = async (listingId) => {
   if (listing.status !== "PENDING")
     throw new BusinessError("Chỉ có thể duyệt bài đăng đang chờ duyệt.");
 
-  await listing.update({ status: "PUBLISHED" });
+  await listing.update({
+    status: "PUBLISHED",
+    published_at: sequelize.fn("NOW"),
+    expired_at: sequelize.literal("NOW() + interval '30 days'"),
+  });
   return listing;
 };
 
@@ -878,6 +959,8 @@ export const approveEditDraftListingService = async (listingId) => {
     });
 
     updateData.status = "PUBLISHED";
+    updateData.updated_at = sequelize.fn("NOW");
+    updateData.expired_at = sequelize.literal("NOW() + interval '30 days'");
     await parentListing.update(updateData, { transaction: t });
 
     //4. Nếu editDraftListing có dữ liệu phần images thì xóa images cũ trên cloud ở parentListing và ghi đè bản mới vào CSDL

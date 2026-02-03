@@ -9,6 +9,7 @@ import {
   softDeleteListingService,
   hideListingService,
   showListingService,
+  renewListingService,
 } from "../services/listing.service.js";
 import AuthenticationError from "../errors/AuthenticationError.js";
 
@@ -269,6 +270,15 @@ export const showListing = async (req, res, next) => {
 // Bài đăng của landlord đã hết hạn muốn làm mới lại EXPIRED -> PENDING
 export const renewListing = async (req, res, next) => {
   try {
+    const { id } = req.params;
+    const userId = req.user.id;
+
+    await renewListingService(id, userId);
+
+    return res.status(200).json({
+      success: true,
+      message: `Đã làm mới bài viết #${id} thành công.`,
+    });
   } catch (error) {
     next(error);
   }

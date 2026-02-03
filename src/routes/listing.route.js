@@ -96,7 +96,7 @@ router.post(
   protect,
   requireRole(["LANDLORD", "ADMIN"]),
   upload.array("files", 15),
-  // validate(createListingSchema),
+  validate(createListingSchema),
   submitDraftListing
 );
 router.post(

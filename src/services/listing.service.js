@@ -807,6 +807,22 @@ export const showListingService = async (listingId, userId) => {
   return listing;
 };
 
+export const renewListingService = async (listingId, userId) => {
+  const listing = await Listing.findOne({
+    where: { id: listingId, owner_id: userId },
+  });
+  if (!listing) throw new NotFoundError("Không tìm thấy bài đăng.");
+  if (listing.status !== "EXPIRED")
+    throw new BusinessError("Chỉ có thể làm mới bài đăng đã hết hạn.");
+
+  await listing.update({
+    status: "PUBLISHED",
+    published_at: sequelize.fn("NOW"),
+    expired_at: sequelize.literal("NOW() + interval '30 days'"),
+  });
+  return listing;
+};
+
 export const getAllListingByAdminService = async () => {};
 
 export const getAllModatedListingsService = async (

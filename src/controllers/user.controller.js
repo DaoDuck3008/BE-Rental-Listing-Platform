@@ -64,6 +64,7 @@ export const getProfile = async (req, res, next) => {
         created_at: user.createdAt,
         status: user.status,
         gender: user.gender,
+        avatar: user.avatar,
       },
     });
   } catch (error) {

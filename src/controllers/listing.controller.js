@@ -26,12 +26,22 @@ export const getAllListingTypes = async (req, res, next) => {
 export const getMyListings = async (req, res, next) => {
   try {
     const userId = req.user.id;
-    if (!userId) next(new AuthenticationError("No authorization header"));
 
     const page = Math.max(parseInt(req.query.page) || 1, 1);
     const limit = Math.min(parseInt(req.query.limit) || 10, 20);
 
-    const result = await getListingsByOwnerIdService(userId, page, limit);
+    const { keyword, status, sort_by } = req.query;
+    const listing_type_code = req.query.listing_type_code || null;
+
+    const result = await getListingsByOwnerIdService(
+      userId,
+      page,
+      limit,
+      listing_type_code,
+      keyword,
+      status,
+      sort_by
+    );
 
     return res.json({
       success: true,

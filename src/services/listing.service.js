@@ -192,48 +192,107 @@ export const getMyListingByIdService = async (id, userId) => {
   }
 };
 
-export const getListingsByOwnerIdService = async (ownerId, page, limit) => {
-  const offset = (page - 1) * limit;
-  const result = await Listing.findAndCountAll({
-    where: {
-      owner_id: ownerId,
-      status: { [Op.notIn]: ["DELETED", "HIDDEN_FROM_USER"] },
-    },
-    attributes: [
-      "id",
-      "title",
-      "price",
-      "area",
-      "address",
-      "bedrooms",
-      "bathrooms",
-      "views",
-      "status",
-      "created_at",
-    ],
-    include: [
-      {
-        model: ListingImage,
-        as: "images",
-        attributes: ["image_url", "sort_order", "public_id"],
-        order: [["sort_order", "ASC"]],
-      },
-      {
-        model: ListingType,
-        as: "listing_type",
-        attributes: ["code", "name"],
-      },
-    ],
-    order: [
-      ["created_at", "DESC"],
-      ["id", "DESC"],
-    ],
-    limit,
-    offset,
-    distinct: true,
-  });
+export const getListingsByOwnerIdService = async (
+  ownerId,
+  page = 1,
+  limit = 10,
+  listing_type_code,
+  keyword,
+  status,
+  sort_by
+) => {
+  try {
+    const p = parseInt(page) || 1;
+    const l = parseInt(limit) || 10;
+    const offset = (p - 1) * l;
 
-  return result;
+    const querySearch = {
+      owner_id: ownerId,
+    };
+
+    if (status) {
+      querySearch.status = status;
+    } else {
+      querySearch.status = { [Op.notIn]: ["DELETED", "HIDDEN_FROM_USER"] };
+    }
+
+    if (keyword) {
+      querySearch[Op.or] = [
+        { title: { [Op.iLike]: `%${keyword}%` } },
+        { address: { [Op.iLike]: `%${keyword}%` } },
+      ];
+    }
+
+    let orderBy = [];
+    switch (sort_by) {
+      case "DATE_ASC":
+        orderBy = [
+          ["updated_at", "ASC"],
+          ["title", "ASC"],
+        ];
+        break;
+      case "PRICE_DESC":
+        orderBy = [
+          ["price", "DESC"],
+          ["title", "ASC"],
+        ];
+        break;
+      case "PRICE_ASC":
+        orderBy = [
+          ["price", "ASC"],
+          ["title", "ASC"],
+        ];
+        break;
+      case "DATE_DESC":
+      default:
+        orderBy = [
+          ["updated_at", "DESC"],
+          ["title", "ASC"],
+        ];
+        break;
+    }
+
+    const result = await Listing.findAndCountAll({
+      where: querySearch,
+      attributes: [
+        "id",
+        "title",
+        "price",
+        "area",
+        "address",
+        "views",
+        "status",
+        "created_at",
+        "updated_at",
+      ],
+      include: [
+        {
+          model: ListingImage,
+          as: "images",
+          attributes: ["image_url", "sort_order", "public_id"],
+        },
+        {
+          model: ListingType,
+          as: "listing_type",
+          attributes: ["code", "name"],
+          where: listing_type_code ? { code: listing_type_code } : undefined,
+          required: !!listing_type_code,
+        },
+      ],
+      order: [
+        ...orderBy,
+        [{ model: ListingImage, as: "images" }, "sort_order", "ASC"],
+      ],
+      limit: l,
+      offset: offset,
+      distinct: true,
+    });
+
+    return result;
+  } catch (error) {
+    if (error instanceof DatabaseError) throw error;
+    throw new DatabaseError("Lỗi khi lấy danh sách phòng của bạn");
+  }
 };
 
 export const createListingService = async (

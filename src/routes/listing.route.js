@@ -14,6 +14,7 @@ import {
   updateSoftPublisedListing,
   getMyListingById,
   updateHardPublishedListing,
+  getAllPublishedListings,
 } from "../controllers/listing.controller.js";
 import { protect, requireRole } from "../middlewares/auth.middleware.js";
 import { upload } from "../middlewares/upload.middleware.js";
@@ -26,6 +27,8 @@ import {
 } from "../validators/listing.validator.js";
 
 const router = express.Router();
+
+router.get("/", getAllPublishedListings);
 
 router.get("/listing_types", getAllListingTypes);
 router.get(

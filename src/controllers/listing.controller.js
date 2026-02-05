@@ -3,6 +3,7 @@ import {
   getAllListingTypesService,
   getPublishedListingByIdService,
   getListingsByOwnerIdService,
+  searchPublishedListingsService,
   submitDraftListingService,
   updateListingService,
   getMyListingByIdService,
@@ -12,6 +13,32 @@ import {
   renewListingService,
 } from "../services/listing.service.js";
 import AuthenticationError from "../errors/AuthenticationError.js";
+
+export const getAllPublishedListings = async (req, res, next) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 12;
+
+    const result = await searchPublishedListingsService({
+      ...req.query,
+      page,
+      limit,
+    });
+
+    return res.json({
+      success: true,
+      data: result.rows,
+      pagination: {
+        page,
+        limit,
+        totalItems: result.count,
+        totalPages: Math.ceil(result.count / limit),
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
 
 export const getAllListingTypes = async (req, res, next) => {
   try {

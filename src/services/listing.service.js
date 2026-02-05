@@ -14,6 +14,121 @@ import AuthorizationError from "../errors/AuthorizationError.js";
 const { ListingType, Listing, ListingImage, ListingAmenity, Amenity, User } =
   db;
 
+export const searchPublishedListingsService = async (params) => {
+  try {
+    const {
+      page = 1,
+      limit = 10,
+      keyword,
+      province_code,
+      ward_code,
+      listing_type_code,
+      min_price,
+      max_price,
+      min_area,
+      max_area,
+      beds,
+      amenities,
+      sort_by,
+    } = params;
+
+    const p = parseInt(page) || 1;
+    const l = parseInt(limit) || 12;
+    const offset = (p - 1) * l;
+
+    const querySearch = {
+      status: "PUBLISHED",
+    };
+
+    if (keyword) {
+      querySearch[Op.or] = [
+        { title: { [Op.iLike]: `%${keyword}%` } },
+        { address: { [Op.iLike]: `%${keyword}%` } },
+      ];
+    }
+
+    if (province_code) querySearch.province_code = province_code;
+    if (ward_code) querySearch.ward_code = ward_code;
+    if (listing_type_code) querySearch.listing_type_code = listing_type_code;
+
+    if (min_price || max_price) {
+      querySearch.price = {};
+      if (min_price) querySearch.price[Op.gte] = min_price;
+      if (max_price) querySearch.price[Op.lte] = max_price;
+    }
+
+    if (min_area || max_area) {
+      querySearch.area = {};
+      if (min_area) querySearch.area[Op.gte] = min_area;
+      if (max_area) querySearch.area[Op.lte] = max_area;
+    }
+
+    if (beds) {
+      querySearch.bedrooms = { [Op.gte]: beds };
+    }
+
+    const include = [
+      {
+        model: ListingImage,
+        as: "images",
+        attributes: ["image_url", "sort_order"],
+      },
+      {
+        model: ListingType,
+        as: "listing_type",
+        attributes: ["code", "name"],
+      },
+    ];
+
+    if (amenities && amenities.length > 0) {
+      const amenityIds = Array.isArray(amenities)
+        ? amenities
+        : amenities.split(",");
+      include.push({
+        model: Amenity,
+        as: "amenities",
+        where: { id: { [Op.in]: amenityIds } },
+        attributes: ["id", "name"],
+        through: { attributes: ["id","name"] }, 
+      });
+    }
+
+    let orderBy = [];
+    switch (sort_by) {
+      case "PRICE_DESC":
+        orderBy = [["price", "DESC"]];
+        break;
+      case "PRICE_ASC":
+        orderBy = [["price", "ASC"]];
+        break;
+      case "DATE_ASC":
+        orderBy = [["updated_at", "ASC"]];
+        break;
+      case "DATE_DESC":
+      default:
+        orderBy = [["updated_at", "DESC"]];
+        break;
+    }
+
+    const result = await Listing.findAndCountAll({
+      where: querySearch,
+      include,
+      order: [
+        ...orderBy,
+        [{ model: ListingImage, as: "images" }, "sort_order", "ASC"],
+      ],
+      limit: l,
+      offset: offset,
+      distinct: true,
+    });
+
+    return result;
+  } catch (error) {
+    if (error instanceof DatabaseError) throw error;
+    throw new DatabaseError("Lỗi khi tìm kiếm bài đăng: " + error.message);
+  }
+};
+
 export const getAllListingTypesService = async () => {
   try {
     const listingTypes = await ListingType.findAll({

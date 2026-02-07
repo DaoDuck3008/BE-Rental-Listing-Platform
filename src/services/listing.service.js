@@ -89,7 +89,7 @@ export const searchPublishedListingsService = async (params) => {
         as: "amenities",
         where: { id: { [Op.in]: amenityIds } },
         attributes: ["id", "name"],
-        through: { attributes: ["id","name"] }, 
+        through: { attributes: ["id", "name"] },
       });
     }
 
@@ -416,10 +416,8 @@ export const createListingService = async (
   images = [],
   coverImageIndex = 0,
   status = "PENDING",
-  parentListingId = ""
+  parentListingId = null
 ) => {
-  // Validate images (not handled by Zod middleware)
-  // For DRAFT, images are optional. For others, at least 1 image is required.
   if (status !== "DRAFT" && (!images || images.length === 0)) {
     throw new ValidationError("Phải có ít nhất 1 ảnh", [
       { field: "images", message: "Phải có ít nhất 1 ảnh" },
@@ -432,7 +430,6 @@ export const createListingService = async (
     ]);
   }
 
-  // Validate coverImageIndex only if there are images
   if (
     images &&
     images.length > 0 &&
@@ -655,7 +652,6 @@ export const updateListingService = async (
   images = [],
   coverImageIndex = 0
 ) => {
-  // Validate images count if present
   if (images && images.length > 20) {
     throw new ValidationError("Tối đa 20 ảnh", [
       { field: "images", message: "Tối đa 20 ảnh" },
@@ -682,7 +678,13 @@ export const updateListingService = async (
     }
 
     // 2. Định nghĩa các nhóm trường
-    const lightFields = ["title", "description", "showPhoneNumber"];
+    const lightFields = [
+      "title",
+      "description",
+      "showPhoneNumber",
+      "longitude",
+      "latitude",
+    ];
     const heavyFields = [
       "price",
       "area",
@@ -693,8 +695,6 @@ export const updateListingService = async (
       "ward_code",
       "address",
       "listing_type_code",
-      "longitude",
-      "latitude",
     ];
 
     let allowedFields = [];
@@ -721,18 +721,16 @@ export const updateListingService = async (
     const dataToUpdate = {};
     allowedFields.forEach((field) => {
       if (updateData[field] !== undefined) {
-        // Mapping beds/bathrooms từ form sang database column name
         let dbField = field;
         if (field === "beds") dbField = "bedrooms";
         if (field === "showPhoneNumber") dbField = "show_phone_number";
 
-        if (field === "listing_type_code") return; // Sẽ xử lý riêng listing_type_id
+        if (field === "listing_type_code") return;
 
         dataToUpdate[dbField] = updateData[field];
       }
     });
 
-    // Xử lý listing_type_id nếu listing_type_code thay đổi và được phép
     if (
       allowedFields.includes("listing_type_code") &&
       updateData.listing_type_code
@@ -887,7 +885,6 @@ export const updateListingService = async (
   } catch (error) {
     await t.rollback();
 
-    // Re-throw custom errors
     if (
       error instanceof NotFoundError ||
       error instanceof ValidationError ||
@@ -908,12 +905,10 @@ export const updateListingService = async (
       throw new ValidationError("Dữ liệu tham chiếu không hợp lệ");
     }
 
-    // Handle database errors
     if (error.name?.startsWith("Sequelize")) {
       throw new DatabaseError(`Lỗi cơ sở dữ liệu: ${error.message}`);
     }
 
-    // Unknown error
     throw new DatabaseError("Lỗi không xác định khi cập nhật listing");
   }
 };

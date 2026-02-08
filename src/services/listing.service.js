@@ -6,7 +6,7 @@ import db from "../models/index.js";
 import sequelize from "../config/database.js";
 import { destroyImages, uploadImage } from "./upload.service.js";
 import { randomUUID } from "crypto";
-import { Op } from "sequelize";
+import { Op, literal } from "sequelize";
 import AuthenticationError from "../errors/AuthenticationError.js";
 import BusinessError from "../errors/BusinessError.js";
 import AuthorizationError from "../errors/AuthorizationError.js";
@@ -30,11 +30,17 @@ export const searchPublishedListingsService = async (params) => {
       beds,
       amenities,
       sort_by,
+      centerLat,
+      centerLong,
+      radius,
     } = params;
 
     const p = parseInt(page) || 1;
     const l = parseInt(limit) || 12;
     const offset = (p - 1) * l;
+
+    // Nếu như có bán kính truyền về thì phải đổi từ mét sang km
+    const radiusKm = radius ? radius / 1000 : null;
 
     const querySearch = {
       status: "PUBLISHED",
@@ -94,44 +100,69 @@ export const searchPublishedListingsService = async (params) => {
       });
     }
 
+    const attributes = [
+      "id",
+      "title",
+      "price",
+      "address",
+      "views",
+      "province_code",
+      "ward_code",
+      "longitude",
+      "latitude",
+      "area",
+      "bedrooms",
+      "bathrooms",
+      "created_at",
+      "updated_at",
+      "status",
+      "show_phone_number",
+    ];
+
+    let havingCondition = undefined;
     let orderBy = [];
+
+    if (centerLat !== undefined && centerLong !== undefined && radiusKm) {
+      // tính khoảng giữa tọa độ 2 điểm trên trái đất cách bằng công thức Haversine
+      const distanceSql = `
+        6371 * acos(
+          cos(radians(${centerLat})) 
+          * cos(radians("Listing"."latitude")) 
+          * cos(radians("Listing"."longitude") - radians(${centerLong})) 
+          + sin(radians(${centerLat})) 
+          * sin(radians("Listing"."latitude"))
+        )
+      `;
+      const distanceLiteral = literal(distanceSql);
+      attributes.push([distanceLiteral, "distance"]);
+
+      if (!querySearch[Op.and]) querySearch[Op.and] = [];
+      querySearch[Op.and].push(literal(`(${distanceSql}) <= ${radiusKm}`));
+
+      orderBy.push([literal("distance"), "ASC"]);
+    }
+
     switch (sort_by) {
       case "PRICE_DESC":
-        orderBy = [["price", "DESC"]];
+        orderBy.push(["price", "DESC"]);
         break;
       case "PRICE_ASC":
-        orderBy = [["price", "ASC"]];
+        orderBy.push(["price", "ASC"]);
         break;
       case "DATE_ASC":
-        orderBy = [["updated_at", "ASC"]];
+        orderBy.push(["updated_at", "ASC"]);
         break;
       case "DATE_DESC":
       default:
-        orderBy = [["updated_at", "DESC"]];
+        orderBy.push(["updated_at", "DESC"]);
         break;
     }
 
     const result = await Listing.findAndCountAll({
       where: querySearch,
-      attributes: [
-        "id",
-        "title",
-        "price",
-        "address",
-        "views",
-        "province_code",
-        "ward_code",
-        "longitude",
-        "latitude",
-        "area",
-        "bedrooms",
-        "bathrooms",
-        "created_at",
-        "updated_at",
-        "status",
-        "show_phone_number",
-      ],
+      attributes,
       include,
+      having: havingCondition,
       order: [
         ...orderBy,
         [{ model: ListingImage, as: "images" }, "sort_order", "ASC"],

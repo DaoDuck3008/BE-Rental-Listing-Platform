@@ -49,7 +49,6 @@ export const searchPublishedListingsService = async (params) => {
 
     if (province_code) querySearch.province_code = province_code;
     if (ward_code) querySearch.ward_code = ward_code;
-    if (listing_type_code) querySearch.listing_type_code = listing_type_code;
 
     if (min_price || max_price) {
       querySearch.price = {};
@@ -77,6 +76,8 @@ export const searchPublishedListingsService = async (params) => {
         model: ListingType,
         as: "listing_type",
         attributes: ["code", "name"],
+        where: listing_type_code ? { code: listing_type_code } : undefined,
+        required: !!listing_type_code,
       },
     ];
 
@@ -112,6 +113,24 @@ export const searchPublishedListingsService = async (params) => {
 
     const result = await Listing.findAndCountAll({
       where: querySearch,
+      attributes: [
+        "id",
+        "title",
+        "price",
+        "address",
+        "views",
+        "province_code",
+        "ward_code",
+        "longitude",
+        "latitude",
+        "area",
+        "bedrooms",
+        "bathrooms",
+        "created_at",
+        "updated_at",
+        "status",
+        "show_phone_number",
+      ],
       include,
       order: [
         ...orderBy,
@@ -1349,15 +1368,19 @@ export const softDeleteListingService = async (listingId, userId) => {
     if (listing.status === "DELETED")
       throw new BusinessError("Bài viết đã bị xóa trước đó");
 
-    const notAllowedStatus = ["PENDING"];
+    const notAllowedStatus = ["PENDING", "EDIT_DRAFT"];
 
     if (notAllowedStatus.includes(listing.status))
       throw new BusinessError("Bạn không thể xóa bài viết đang được duyệt");
 
-    await listing.update(
-      { status: "DELETED", deleted_at: sequelize.fn("NOW") },
-      { transaction: t }
-    );
+    if (listing.status === "DRAFT") {
+      await listing.destroy({ transaction: t });
+    } else {
+      await listing.update(
+        { status: "DELETED", deleted_at: sequelize.fn("NOW") },
+        { transaction: t }
+      );
+    }
 
     await t.commit();
     return true;

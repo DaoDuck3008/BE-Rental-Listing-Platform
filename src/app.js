@@ -13,6 +13,8 @@ import userRoutes from "./routes/user.route.js";
 import amenitiesRoutes from "./routes/amenities.route.js";
 import listingRoutes from "./routes/listing.route.js";
 import adminRoutes from "./routes/admin.route.js";
+import { initRedis } from "./config/redis.js";
+import { startSyncListingViewsJob } from "./jobs/syncListingViews.job.js";
 
 dotenv.config();
 
@@ -44,6 +46,8 @@ const connectDB = async () => {
   }
 };
 connectDB();
+// CONNECT REDIS
+initRedis();
 
 // ROUTE
 app.use("/", defaultRoutes);
@@ -52,6 +56,9 @@ app.use("/api/users", userRoutes);
 app.use("/api/amenities", amenitiesRoutes);
 app.use("/api/listings", listingRoutes);
 app.use("/api/admin", adminRoutes);
+
+// CRON JOB (TEMPORARY FOR DEV)
+startSyncListingViewsJob();
 
 // HANDLING ERROR
 app.use((err, req, res, next) => {

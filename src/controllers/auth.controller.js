@@ -74,7 +74,7 @@ export const googleLogin = async (req, res, next) => {
 
     // 3. Tạo access token và refresh token
     const access_token = signAccessToken({
-      sub: user.id,
+      id: user.id,
       role: user.role.code,
     });
 

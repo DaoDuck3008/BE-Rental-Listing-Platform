@@ -10,9 +10,35 @@ import { Op, literal } from "sequelize";
 import AuthenticationError from "../errors/AuthenticationError.js";
 import BusinessError from "../errors/BusinessError.js";
 import AuthorizationError from "../errors/AuthorizationError.js";
+import { getRedis } from "../config/redis.js";
+import RedisError from "../errors/RedisError.js";
 
 const { ListingType, Listing, ListingImage, ListingAmenity, Amenity, User } =
   db;
+
+const clearListingSearchCache = async () => {
+  try {
+    const redis = getRedis();
+    const keys = await redis.keys("listings:search:*");
+    if (keys.length > 0) {
+      await redis.del(...keys);
+    }
+  } catch (error) {
+    console.error(new RedisError("Lỗi xóa cache tìm kiếm: " + error.message));
+  }
+};
+
+const clearPublishedListingDetailCache = async (listingId) => {
+  try {
+    const redis = getRedis();
+    const key = `listing:published-detail:${listingId}`;
+    await redis.del(key);
+  } catch (error) {
+    console.error(
+      new RedisError("Lỗi xóa cache chi tiết listing: " + error.message)
+    );
+  }
+};
 
 export const searchPublishedListingsService = async (params) => {
   try {
@@ -34,6 +60,20 @@ export const searchPublishedListingsService = async (params) => {
       centerLong,
       radius,
     } = params;
+
+    // Tạo cache key dựa trên params
+    const cacheKey = `listings:search:${JSON.stringify(params)}`;
+    const redis = getRedis();
+
+    // Kiểm tra cache đã tồn tại hay chưa
+    try {
+      const cachedData = await redis.get(cacheKey);
+      if (cachedData) {
+        return JSON.parse(cachedData);
+      }
+    } catch (err) {
+      console.error(new RedisError("Lỗi lấy dữ liệu từ cache: " + err.message));
+    }
 
     const p = parseInt(page) || 1;
     const l = parseInt(limit) || 12;
@@ -172,27 +212,18 @@ export const searchPublishedListingsService = async (params) => {
       distinct: true,
     });
 
+    try {
+      await redis.set(cacheKey, JSON.stringify(result), "EX", 300);
+    } catch (err) {
+      console.error(
+        new RedisError("Lỗi lưu dữ liệu vào cache: " + err.message)
+      );
+    }
+
     return result;
   } catch (error) {
     if (error instanceof DatabaseError) throw error;
     throw new DatabaseError("Lỗi khi tìm kiếm bài đăng: " + error.message);
-  }
-};
-
-export const getAllListingTypesService = async () => {
-  try {
-    const listingTypes = await ListingType.findAll({
-      attributes: ["code", "name"],
-    });
-
-    if (!listingTypes || listingTypes.length === 0) {
-      throw new NotFoundError("Không tìm thấy loại phòng nào.");
-    }
-
-    return listingTypes;
-  } catch (error) {
-    if (error instanceof NotFoundError) throw error;
-    throw new DatabaseError("Lỗi khi lấy danh sách loại phòng");
   }
 };
 
@@ -265,6 +296,18 @@ export const getListingByIdService = async (id, options = {}) => {
 };
 
 export const getPublishedListingByIdService = async (id) => {
+  const cacheKey = `listing:published-detail:${id}`;
+  const redis = getRedis();
+
+  try {
+    const cachedData = await redis.get(cacheKey);
+    if (cachedData) {
+      return JSON.parse(cachedData);
+    }
+  } catch (error) {
+    console.error(new RedisError("Lỗi lấy dữ liệu từ cache: " + error.message));
+  }
+
   try {
     const listing = await Listing.findOne({
       where: {
@@ -304,6 +347,14 @@ export const getPublishedListingByIdService = async (id) => {
 
     if (!listing) {
       throw new NotFoundError("Không tìm thấy bài đăng.");
+    }
+
+    try {
+      await redis.set(cacheKey, JSON.stringify(listing), "EX", 600);
+    } catch (error) {
+      console.error(
+        new RedisError("Lỗi lưu dữ liệu vào cache: " + error.message)
+      );
     }
 
     return listing;
@@ -931,6 +982,8 @@ export const updateListingService = async (
     }
 
     await t.commit();
+    await clearListingSearchCache();
+    await clearPublishedListingDetailCache(listingId);
     return listing;
   } catch (error) {
     await t.rollback();
@@ -1011,6 +1064,8 @@ export const hideListingService = async (listingId, userId) => {
     throw new BusinessError("Chỉ có thể ẩn bài đăng đang hiển thị.");
 
   await listing.update({ status: "HIDDEN" });
+  await clearListingSearchCache();
+  await clearPublishedListingDetailCache(listingId);
   return listing;
 };
 
@@ -1023,6 +1078,8 @@ export const showListingService = async (listingId, userId) => {
     throw new BusinessError("Bài đăng này không bị ẩn.");
 
   await listing.update({ status: "PUBLISHED" });
+  await clearListingSearchCache();
+  await clearPublishedListingDetailCache(listingId);
   return listing;
 };
 
@@ -1039,6 +1096,8 @@ export const renewListingService = async (listingId, userId) => {
     published_at: sequelize.fn("NOW"),
     expired_at: sequelize.literal("NOW() + interval '30 days'"),
   });
+  await clearListingSearchCache();
+  await clearPublishedListingDetailCache(listingId);
   return listing;
 };
 
@@ -1130,6 +1189,9 @@ export const approveListingService = async (listingId) => {
     published_at: sequelize.fn("NOW"),
     expired_at: sequelize.literal("NOW() + interval '30 days'"),
   });
+
+  await clearListingSearchCache();
+  await clearPublishedListingDetailCache(listingId);
   return listing;
 };
 
@@ -1270,6 +1332,8 @@ export const approveEditDraftListingService = async (listingId) => {
     await editDraftListing.destroy({ transaction: t });
 
     await t.commit();
+    await clearListingSearchCache();
+    await clearPublishedListingDetailCache(parentListing.id);
     return parentListing;
   } catch (error) {
     if (t) await t.rollback();
@@ -1361,6 +1425,8 @@ export const rejectEditDraftListingService = async (listingId, reason) => {
     await listing.destroy({ transaction: t });
 
     await t.commit();
+    await clearListingSearchCache();
+    await clearPublishedListingDetailCache(parentListing.id);
     return true;
   } catch (error) {
     if (t) await t.rollback();
@@ -1414,6 +1480,8 @@ export const softDeleteListingService = async (listingId, userId) => {
     }
 
     await t.commit();
+    await clearListingSearchCache();
+    await clearPublishedListingDetailCache(listingId);
     return true;
   } catch (error) {
     await t.rollback();
@@ -1437,4 +1505,13 @@ export const softDeleteListingService = async (listingId, userId) => {
 };
 
 // Admin xóa bài viết vĩnh viễn khỏi CSDL
-export const hardDeleteListingService = async (listingId) => {};
+export const hardDeleteListingService = async (listingId) => {
+  try {
+    await clearPublishedListingDetailCache(listingId);
+    await clearListingSearchCache();
+  } catch (error) {
+    console.error(
+      new RedisError("Lỗi xóa cache khi hard delete: " + error.message)
+    );
+  }
+};

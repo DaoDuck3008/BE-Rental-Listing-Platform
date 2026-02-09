@@ -1,6 +1,5 @@
 import {
   createListingService,
-  getAllListingTypesService,
   getPublishedListingByIdService,
   getListingsByOwnerIdService,
   searchPublishedListingsService,
@@ -13,6 +12,9 @@ import {
   renewListingService,
 } from "../services/listing.service.js";
 import AuthenticationError from "../errors/AuthenticationError.js";
+import { getAllListingTypesService } from "../services/listingType.service.js";
+import { hashIP } from "../utils/hash.util.js";
+import { increaseViewListingIfNeeded } from "../services/view.service.js";
 
 export const getAllPublishedListings = async (req, res, next) => {
   try {
@@ -89,6 +91,16 @@ export const getPublishedListingById = async (req, res, next) => {
   try {
     const { id } = req.params;
     const result = await getPublishedListingByIdService(id);
+
+    if (req.user?.id === result.owner_id || req.user?.role === "ADMIN") {
+      return res.json({
+        success: true,
+        data: result,
+      });
+    }
+
+    const viewerKey = req.user ? `user:${req.user.id}` : `ip:${hashIP(req.ip)}`;
+    await increaseViewListingIfNeeded({ listingId: result.id, viewerKey });
 
     return res.json({
       success: true,

@@ -16,7 +16,7 @@ import {
   updateHardPublishedListing,
   getAllPublishedListings,
 } from "../controllers/listing.controller.js";
-import { protect, requireRole } from "../middlewares/auth.middleware.js";
+import { protect, optionalProtect, requireRole } from "../middlewares/auth.middleware.js";
 import { upload } from "../middlewares/upload.middleware.js";
 import { validate } from "../middlewares/validate.middleware.js";
 import {
@@ -43,7 +43,7 @@ router.get(
   requireRole(["LANDLORD", "ADMIN"]),
   getMyListingById
 );
-router.get("/:id", getPublishedListingById);
+router.get("/:id", optionalProtect, getPublishedListingById);
 
 router.post(
   "/create",

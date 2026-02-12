@@ -112,6 +112,13 @@ export const searchPublishedListingsService = async (params) => {
       querySearch.bedrooms = { [Op.gte]: beds };
     }
 
+    // tìm kiếm theo Bounding Box
+    const { minLat, maxLat, minLng, maxLng, include_markers } = params;
+    if (minLat && maxLat && minLng && maxLng) {
+      querySearch.latitude = { [Op.between]: [parseFloat(minLat), parseFloat(maxLat)] };
+      querySearch.longitude = { [Op.between]: [parseFloat(minLng), parseFloat(maxLng)] };
+    }
+
     const include = [
       {
         model: ListingImage,
@@ -136,7 +143,7 @@ export const searchPublishedListingsService = async (params) => {
         as: "amenities",
         where: { id: { [Op.in]: amenityIds } },
         attributes: ["id", "name"],
-        through: { attributes: ["id", "name"] },
+        through: { attributes: [] }, 
       });
     }
 
@@ -163,7 +170,6 @@ export const searchPublishedListingsService = async (params) => {
     let orderBy = [];
 
     if (centerLat !== undefined && centerLong !== undefined && radiusKm) {
-      // tính khoảng giữa tọa độ 2 điểm trên trái đất cách bằng công thức Haversine
       const distanceSql = `
         6371 * acos(
           cos(radians(${centerLat})) 
@@ -198,6 +204,7 @@ export const searchPublishedListingsService = async (params) => {
         break;
     }
 
+    // 1. Truy vấn kết quả tìm kiếm
     const result = await Listing.findAndCountAll({
       where: querySearch,
       attributes,
@@ -212,15 +219,61 @@ export const searchPublishedListingsService = async (params) => {
       distinct: true,
     });
 
+    // 2. Nếu như có yêu cầu tìm kiếm theo Bounding Box (Map), truy vấn riêng markers để hiển thị trên map (không có phân trang)
+    let markers = [];
+    if (include_markers === "true" || include_markers === true) {
+      const markerAttributes = ["id", "latitude", "longitude", "price", "title", "address", "area"];
+      
+      if (centerLat !== undefined && centerLong !== undefined && radiusKm) {
+        const distanceSql = `
+          6371 * acos(
+            cos(radians(${centerLat})) 
+            * cos(radians("Listing"."latitude")) 
+            * cos(radians("Listing"."longitude") - radians(${centerLong})) 
+            + sin(radians(${centerLat})) 
+            * sin(radians("Listing"."latitude"))
+          )
+        `;
+        markerAttributes.push([literal(distanceSql), "distance"]);
+      }
+
+      markers = await Listing.findAll({
+        where: querySearch,
+        attributes: markerAttributes,
+        include: [
+          {
+            model: ListingType,
+            as: "listing_type",
+            attributes: ["code", "name"],
+            where: listing_type_code ? { code: listing_type_code } : undefined,
+            required: !!listing_type_code,
+          },
+          {
+            model: ListingImage,
+            as: "images",
+            attributes: ["image_url", "sort_order"],
+          },
+        ],
+        order: orderBy,
+      });
+    }
+
+
+    const finalResult = {
+      ...result,
+      markers: markers
+    };
+
     try {
-      await redis.set(cacheKey, JSON.stringify(result), "EX", 300);
+      await redis.set(cacheKey, JSON.stringify(finalResult), "EX", 300);
     } catch (err) {
       console.error(
         new RedisError("Lỗi lưu dữ liệu vào cache: " + err.message)
       );
     }
 
-    return result;
+    return finalResult;
+
   } catch (error) {
     if (error instanceof DatabaseError) throw error;
     throw new DatabaseError("Lỗi khi tìm kiếm bài đăng: " + error.message);

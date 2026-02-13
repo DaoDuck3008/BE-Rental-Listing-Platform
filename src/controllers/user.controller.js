@@ -1,4 +1,8 @@
-import { getUserById, updateUserProfile } from "../services/user.service.js";
+import {
+  getMyFavorites,
+  getUserById,
+  updateUserProfile,
+} from "../services/user.service.js";
 import { verifyAcessToken } from "../utils/jwt.util.js";
 import AuthenticationError from "../errors/AuthenticationError.js";
 
@@ -86,6 +90,24 @@ export const updateProfile = async (req, res, next) => {
     return res.status(200).json({
       message: EM,
       code: EC,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getFavorites = async (req, res, next) => {
+  try {
+    const userId = req.user.id;
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+
+    const result = await getMyFavorites(userId, limit, page);
+
+    return res.status(200).json({
+      success: true,
+      message: "Lấy danh sách yêu thích thành công",
+      data: result,
     });
   } catch (error) {
     next(error);

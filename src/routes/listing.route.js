@@ -15,8 +15,13 @@ import {
   getMyListingById,
   updateHardPublishedListing,
   getAllPublishedListings,
+  favoriteListing,
 } from "../controllers/listing.controller.js";
-import { protect, optionalProtect, requireRole } from "../middlewares/auth.middleware.js";
+import {
+  protect,
+  optionalProtect,
+  requireRole,
+} from "../middlewares/auth.middleware.js";
 import { upload } from "../middlewares/upload.middleware.js";
 import { validate } from "../middlewares/validate.middleware.js";
 import {
@@ -126,5 +131,7 @@ router.delete(
   requireRole(["LANDLORD", "ADMIN"]),
   softDeleteListing
 );
+
+router.post("/:id/favorite", protect, favoriteListing);
 
 export default router;

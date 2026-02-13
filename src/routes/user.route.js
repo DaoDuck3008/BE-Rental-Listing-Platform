@@ -1,5 +1,6 @@
 import express from "express";
 import {
+  getFavorites,
   getMe,
   getProfile,
   updateProfile,
@@ -20,5 +21,7 @@ router.put(
   validate(updateProfileSchema),
   updateProfile
 );
+
+router.get("/favorites", protect, getFavorites);
 
 export default router;

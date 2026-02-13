@@ -10,6 +10,7 @@ import {
   hideListingService,
   showListingService,
   renewListingService,
+  favoriteListingService,
 } from "../services/listing.service.js";
 import AuthenticationError from "../errors/AuthenticationError.js";
 import { getAllListingTypesService } from "../services/listingType.service.js";
@@ -344,6 +345,30 @@ export const softDeleteListing = async (req, res, next) => {
     return res.status(200).json({
       success: true,
       message: "Xóa bài viết thành công.",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// User thêm bài đăng vào mục yêu thích
+export const favoriteListing = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+    if (!userId)
+      next(
+        new AuthenticationError("Bạn cần đăng nhập để thực hiện hành động này")
+      );
+
+    const result = await favoriteListingService(id, userId); // Kết quả nhận được là False - Xoá khỏi yêu thích, True - Thêm vào yêu thích
+
+    return res.status(200).json({
+      success: true,
+      message: result
+        ? `Đã thêm bài viết #${id} vào mục yêu thích.`
+        : `Đã xoá bài viết #${id} khỏi mục yêu thích.`,
+      isFavorited: result,
     });
   } catch (error) {
     next(error);

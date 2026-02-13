@@ -13,8 +13,15 @@ import AuthorizationError from "../errors/AuthorizationError.js";
 import { getRedis } from "../config/redis.js";
 import RedisError from "../errors/RedisError.js";
 
-const { ListingType, Listing, ListingImage, ListingAmenity, Amenity, User } =
-  db;
+const {
+  ListingType,
+  Listing,
+  ListingImage,
+  ListingAmenity,
+  Amenity,
+  User,
+  Favorite,
+} = db;
 
 const clearListingSearchCache = async () => {
   try {
@@ -115,8 +122,12 @@ export const searchPublishedListingsService = async (params) => {
     // tìm kiếm theo Bounding Box
     const { minLat, maxLat, minLng, maxLng, include_markers } = params;
     if (minLat && maxLat && minLng && maxLng) {
-      querySearch.latitude = { [Op.between]: [parseFloat(minLat), parseFloat(maxLat)] };
-      querySearch.longitude = { [Op.between]: [parseFloat(minLng), parseFloat(maxLng)] };
+      querySearch.latitude = {
+        [Op.between]: [parseFloat(minLat), parseFloat(maxLat)],
+      };
+      querySearch.longitude = {
+        [Op.between]: [parseFloat(minLng), parseFloat(maxLng)],
+      };
     }
 
     const include = [
@@ -143,7 +154,7 @@ export const searchPublishedListingsService = async (params) => {
         as: "amenities",
         where: { id: { [Op.in]: amenityIds } },
         attributes: ["id", "name"],
-        through: { attributes: [] }, 
+        through: { attributes: [] },
       });
     }
 
@@ -222,8 +233,16 @@ export const searchPublishedListingsService = async (params) => {
     // 2. Nếu như có yêu cầu tìm kiếm theo Bounding Box (Map), truy vấn riêng markers để hiển thị trên map (không có phân trang)
     let markers = [];
     if (include_markers === "true" || include_markers === true) {
-      const markerAttributes = ["id", "latitude", "longitude", "price", "title", "address", "area"];
-      
+      const markerAttributes = [
+        "id",
+        "latitude",
+        "longitude",
+        "price",
+        "title",
+        "address",
+        "area",
+      ];
+
       if (centerLat !== undefined && centerLong !== undefined && radiusKm) {
         const distanceSql = `
           6371 * acos(
@@ -258,10 +277,9 @@ export const searchPublishedListingsService = async (params) => {
       });
     }
 
-
     const finalResult = {
       ...result,
-      markers: markers
+      markers: markers,
     };
 
     try {
@@ -273,7 +291,6 @@ export const searchPublishedListingsService = async (params) => {
     }
 
     return finalResult;
-
   } catch (error) {
     if (error instanceof DatabaseError) throw error;
     throw new DatabaseError("Lỗi khi tìm kiếm bài đăng: " + error.message);
@@ -1566,5 +1583,47 @@ export const hardDeleteListingService = async (listingId) => {
     console.error(
       new RedisError("Lỗi xóa cache khi hard delete: " + error.message)
     );
+  }
+};
+
+// Toggle thêm hoặc xóa yêu thích bài đăng
+export const favoriteListingService = async (listingId, userId) => {
+  try {
+    const listing = await getListingByIdService(listingId);
+    if (!listing) throw new NotFoundError("Không tìm thấy bài đăng.");
+    if (listing.owner_id === userId)
+      throw new BusinessError(
+        "Bạn không thể yêu thích bài đăng của chính mình."
+      );
+
+    const existingFavorite = await Favorite.findOne({
+      where: { listing_id: listingId, user_id: userId },
+    });
+
+    if (existingFavorite) {
+      // Nếu đã yêu thích rồi thì bỏ yêu thích
+      await existingFavorite.destroy();
+
+      return false;
+    } else {
+      // Chưa yêu thích thì thêm vào
+      await Favorite.create({
+        listing_id: listingId,
+        user_id: userId,
+      });
+
+      return true;
+    }
+  } catch (error) {
+    if (error instanceof NotFoundError || error instanceof BusinessError) {
+      throw error;
+    }
+
+    if (error.name?.startsWith("Sequelize")) {
+      throw new DatabaseError(`Lỗi cơ sở dữ liệu: ${error.message}`);
+    }
+
+    console.error(error);
+    throw new DatabaseError("Lỗi không xác định khi yêu thích bài đăng");
   }
 };

@@ -8,6 +8,7 @@ import {
   getAllListingsForAdmin,
   getAllModeratedListingsForAdmin,
   getListingForAdmin,
+  getListingStatsForAdmin,
 } from "../controllers/admin.controller.js";
 import { protect, requireRole } from "../middlewares/auth.middleware.js";
 
@@ -16,6 +17,7 @@ const router = express.Router();
 router.use(protect);
 router.use(requireRole(["ADMIN"]));
 
+router.get("/listings/stats", getListingStatsForAdmin);
 router.get("/listings", getAllListingsForAdmin);
 router.get("/listings/moderation", getAllModeratedListingsForAdmin);
 router.get("/listings/:id", getListingForAdmin);

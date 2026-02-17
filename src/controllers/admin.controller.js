@@ -5,10 +5,33 @@ import {
   rejectEditDraftListingService,
   getListingByIdService,
   getAllModatedListingsService,
+  getAllListingByAdminService,
+  getListingStatsService,
+  hardDeleteListingService,
 } from "../services/listing.service.js";
+
+export const getListingStatsForAdmin = async (req, res, next) => {
+  try {
+    const stats = await getListingStatsService();
+    return res.status(200).json({
+      success: true,
+      data: stats,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
 
 export const getAllListingsForAdmin = async (req, res, next) => {
   try {
+    const result = await getAllListingByAdminService(req.query);
+
+    return res.status(200).json({
+      success: true,
+      message: "Lấy danh sách tất cả bài đăng thành công",
+      data: result.data,
+      pagination: result.pagination,
+    });
   } catch (error) {
     next(error);
   }
@@ -121,7 +144,13 @@ export const rejectEditDraft = async (req, res, next) => {
 
 export const hardDeleteListing = async (req, res, next) => {
   try {
-    // Logic for hard delete if needed
+    const { id } = req.params;
+    await hardDeleteListingService(id);
+
+    return res.status(200).json({
+      success: true,
+      message: "Xóa bài đăng vĩnh viễn thành công",
+    });
   } catch (error) {
     next(error);
   }

@@ -50,13 +50,9 @@ export const getMe = async (req, res, next) => {
 
 export const getProfile = async (req, res, next) => {
   try {
-    const auth = req.headers.authorization;
-    if (!auth) next(new AuthenticationError("No authorization header"));
+    const userId = req.user.id;
 
-    const token = auth.split(" ")[1];
-    const payload = verifyAcessToken(token);
-
-    const user = await getUserById(payload.sub);
+    const user = await getUserById(userId);
 
     return res.status(200).json({
       success: true,

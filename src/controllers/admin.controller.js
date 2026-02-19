@@ -8,6 +8,7 @@ import {
   getAllListingByAdminService,
   getListingStatsService,
   hardDeleteListingService,
+  updateListingService,
 } from "../services/listing.service.js";
 
 export const getListingStatsForAdmin = async (req, res, next) => {
@@ -150,6 +151,33 @@ export const hardDeleteListing = async (req, res, next) => {
     return res.status(200).json({
       success: true,
       message: "Xóa bài đăng vĩnh viễn thành công",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateListingByAdmin = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+    const data = req.body;
+    const images = req.files;
+    const coverImageIndex = parseInt(data.coverImageIndex) || 0;
+
+    const result = await updateListingService(
+      id,
+      userId,
+      data,
+      images,
+      coverImageIndex,
+      true // isAdmin
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Admin cập nhật bài viết thành công",
+      data: result,
     });
   } catch (error) {
     next(error);

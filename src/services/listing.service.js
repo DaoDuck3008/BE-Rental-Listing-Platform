@@ -331,7 +331,14 @@ export const getListingByIdService = async (id, options = {}) => {
         {
           model: User,
           as: "owner",
-          attributes: ["id", "full_name", "phone_number", "gender", "avatar"],
+          attributes: [
+            "id",
+            "full_name",
+            "phone_number",
+            "email",
+            "gender",
+            "avatar",
+          ],
         },
         {
           model: Listing,
@@ -369,8 +376,11 @@ export const getListingByIdService = async (id, options = {}) => {
   }
 };
 
-export const getPublishedListingByIdService = async (id, currentUserId = null) => {
-  const cacheKey = currentUserId 
+export const getPublishedListingByIdService = async (
+  id,
+  currentUserId = null
+) => {
+  const cacheKey = currentUserId
     ? `listing:published-detail:${id}:user:${currentUserId}`
     : `listing:published-detail:${id}:guest`;
   const redis = getRedis();
@@ -900,7 +910,8 @@ export const updateListingService = async (
   userId,
   updateData,
   images = [],
-  coverImageIndex = 0
+  coverImageIndex = 0,
+  isAdmin = false
 ) => {
   if (images && images.length > 20) {
     throw new ValidationError("Tối đa 20 ảnh", [
@@ -910,16 +921,23 @@ export const updateListingService = async (
 
   const t = await sequelize.transaction();
   try {
-    // 1. Tìm listing và kiểm tra quyền sở hữu
+    // 1. Tìm listing
+    const query = { id: listingId };
+    if (!isAdmin) {
+      query.owner_id = userId;
+    }
+
     const listing = await Listing.findOne({
-      where: { id: listingId, owner_id: userId },
+      where: query,
       transaction: t,
       lock: t.LOCK.UPDATE,
     });
 
     if (!listing) {
       throw new NotFoundError(
-        "Không tìm thấy bài đăng hoặc bạn không có quyền chỉnh sửa."
+        isAdmin
+          ? "Không tìm thấy bài đăng để chỉnh sửa."
+          : "Không tìm thấy bài đăng hoặc bạn không có quyền chỉnh sửa."
       );
     }
 
@@ -951,9 +969,9 @@ export const updateListingService = async (
     let canUpdateImages = false;
     let canUpdateAmenities = false;
 
-    // 3. Áp dụng quy tắc theo status
+    // 3. Áp dụng quy tắc theo status (Admin có quyền sửa tất cả)
     const status = listing.status;
-    if (["DRAFT", "EDIT_DRAFT"].includes(status)) {
+    if (isAdmin || ["DRAFT", "EDIT_DRAFT"].includes(status)) {
       allowedFields = [...lightFields, ...heavyFields];
       canUpdateImages = true;
       canUpdateAmenities = true;
@@ -1022,8 +1040,8 @@ export const updateListingService = async (
       }
     }
 
-    // Xóa ảnh cũ rồi tải anh mới lên
-    if (canUpdateImages) {
+    // Xóa ảnh cũ rồi tải anh mới lên (chỉ thực hiện nếu có ảnh mới)
+    if (canUpdateImages && images && images.length > 0) {
       const existingImages = await ListingImage.findAll({
         where: { listing_id: listingId },
         transaction: t,
@@ -1272,7 +1290,7 @@ export const getAllListingByAdminService = async ({
     {
       model: ListingImage,
       as: "images",
-      attributes: ["image_url", "sort_order", "public_id"],
+      attributes: ["image_url", "sort_order"],
     },
     {
       model: ListingType,
@@ -1334,7 +1352,10 @@ export const getAllListingByAdminService = async ({
       "updated_at",
     ],
     include: include,
-    order: orderBy,
+    order: [
+      ...orderBy,
+      [{ model: ListingImage, as: "images" }, "sort_order", "ASC"],
+    ],
     limit: l,
     offset: offset,
     distinct: true,
@@ -1655,13 +1676,13 @@ export const hardDeleteListingService = async (listingId) => {
       }
     }
 
-    // 2. Xóa bài đăng
-    await listing.destroy({ transaction: t });
+    // 2. Xóa bài đăng khỏi CSDL
+    await listing.destroy({ transaction: t, force: true });
     await t.commit();
 
-    // 3. Xóa cache nếu cần
-    clearListingSearchCache();
-    clearPublishedListingDetailCache();
+    // 3. Xóa cache
+    await clearListingSearchCache();
+    await clearPublishedListingDetailCache(listingId);
 
     return true;
   } catch (error) {

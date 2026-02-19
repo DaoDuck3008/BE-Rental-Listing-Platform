@@ -9,8 +9,10 @@ import {
   getAllModeratedListingsForAdmin,
   getListingForAdmin,
   getListingStatsForAdmin,
+  updateListingByAdmin,
 } from "../controllers/admin.controller.js";
 import { protect, requireRole } from "../middlewares/auth.middleware.js";
+import { upload } from "../middlewares/upload.middleware.js";
 
 const router = express.Router();
 
@@ -21,6 +23,8 @@ router.get("/listings/stats", getListingStatsForAdmin);
 router.get("/listings", getAllListingsForAdmin);
 router.get("/listings/moderation", getAllModeratedListingsForAdmin);
 router.get("/listings/:id", getListingForAdmin);
+
+router.patch("/listings/:id", upload.array("files", 15), updateListingByAdmin);
 
 router.post("/listings/:id/approve", approveListing);
 router.post("/listings/:id/reject", rejectListing);

@@ -13,6 +13,8 @@ import userRoutes from "./routes/user.route.js";
 import amenitiesRoutes from "./routes/amenities.route.js";
 import listingRoutes from "./routes/listing.route.js";
 import adminRoutes from "./routes/admin.route.js";
+import commentRoutes from "./routes/comment.route.js";
+
 import { initRedis } from "./config/redis.js";
 import { startSyncListingViewsJob } from "./jobs/syncListingViews.job.js";
 
@@ -56,6 +58,7 @@ app.use("/api/users", userRoutes);
 app.use("/api/amenities", amenitiesRoutes);
 app.use("/api/listings", listingRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/comments", commentRoutes);
 
 // CRON JOB (TEMPORARY FOR DEV)
 startSyncListingViewsJob();

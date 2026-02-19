@@ -91,7 +91,7 @@ export const getMyListings = async (req, res, next) => {
 export const getPublishedListingById = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const result = await getPublishedListingByIdService(id);
+    const result = await getPublishedListingByIdService(id, req.user?.id);
 
     if (req.user?.id === result.owner_id || req.user?.role === "ADMIN") {
       return res.json({

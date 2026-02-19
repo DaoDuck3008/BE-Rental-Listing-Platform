@@ -14,6 +14,18 @@ module.exports = (sequelize, DataTypes) => {
         foreignKey: "owner_id",
         as: "listings",
       });
+
+      // 1 User -> N Comment
+      User.hasMany(models.Comment, {
+        foreignKey: "user_id",
+        as: "comments",
+      });
+
+      // 1 User -> N CommentLike
+      User.hasMany(models.CommentLike, {
+        foreignKey: "user_id",
+        as: "comment_likes",
+      });
     }
   }
 

@@ -425,6 +425,11 @@ module.exports = {
         type: Sequelize.TEXT,
         allowNull: false,
       },
+      like_count: {
+        type: Sequelize.INTEGER,
+        allowNull: false,
+        defaultValue: 0,
+      },
       createdAt: {
         type: Sequelize.DATE,
         field: "created_at",
@@ -435,6 +440,53 @@ module.exports = {
         field: "updated_at",
         defaultValue: Sequelize.NOW,
       },
+      deletedAt: {
+        type: Sequelize.DATE,
+        field: "deleted_at",
+        allowNull: true,
+      },
+    });
+
+    // Create comment_likes table
+    await queryInterface.createTable("comment_likes", {
+      id: {
+        type: Sequelize.UUID,
+        autoIncrement: true,
+        primaryKey: true,
+      },
+
+      comment_id: {
+        type: Sequelize.UUID,
+        allowNull: false,
+        references: {
+          model: "comments",
+          key: "id",
+        },
+        onDelete: "CASCADE",
+      },
+
+      user_id: {
+        type: Sequelize.UUID,
+        allowNull: false,
+        references: {
+          model: "users",
+          key: "id",
+        },
+        onDelete: "CASCADE",
+      },
+
+      created_at: {
+        type: Sequelize.DATE,
+        allowNull: false,
+        defaultValue: Sequelize.literal("NOW()"),
+      },
+    });
+
+    // Unique constraint for comment_id + user_id to prevent duplicate likes
+    await queryInterface.addConstraint("comment_likes", {
+      fields: ["comment_id", "user_id"],
+      type: "unique",
+      name: "uq_comment_likes_user",
     });
 
     // Create chats table
@@ -741,6 +793,10 @@ module.exports = {
     await queryInterface.addIndex("comments", ["parent_id"]);
     await queryInterface.addIndex("comments", ["created_at"]);
 
+    // Comment likes indexes
+    await queryInterface.addIndex("comment_likes", ["comment_id"]);
+    await queryInterface.addIndex("comment_likes", ["user_id"]);
+
     // Chats indexes
     await queryInterface.addIndex("chats", ["listing_id"]);
     await queryInterface.addIndex("chats", ["tenant_id"]);
@@ -790,6 +846,7 @@ module.exports = {
       "messages",
       "chats",
       "comments",
+      "comment_likes",
       "listing_amenities",
       "amenities",
       "listing_images",

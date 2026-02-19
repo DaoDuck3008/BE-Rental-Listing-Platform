@@ -43,6 +43,14 @@ module.exports = (sequelize, DataTypes) => {
         as: "parentListing",
         foreignKey: "parent_listing_id",
       });
+
+      // 1 Listing -> N Comments
+      Listing.hasMany(models.Comment, {
+        foreignKey: "listing_id",
+        as: "comments",
+        onDelete: "CASCADE",
+        onUpdate: "CASCADE",
+      });
     }
   }
 

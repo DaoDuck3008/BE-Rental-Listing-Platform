@@ -3,7 +3,6 @@ import ValidationError from "../errors/ValidationError.js";
 import DatabaseError from "../errors/DatabaseError.js";
 import UploadError from "../errors/UploadError.js";
 import db from "../models/index.js";
-import sequelize from "../config/database.js";
 import { destroyImages, uploadImage } from "./upload.service.js";
 import { randomUUID } from "crypto";
 import { Op, literal } from "sequelize";
@@ -21,6 +20,8 @@ const {
   Amenity,
   User,
   Favorite,
+  Comment,
+  sequelize,
 } = db;
 
 const clearListingSearchCache = async () => {
@@ -35,11 +36,14 @@ const clearListingSearchCache = async () => {
   }
 };
 
-const clearPublishedListingDetailCache = async (listingId) => {
+export const clearPublishedListingDetailCache = async (listingId) => {
   try {
     const redis = getRedis();
-    const key = `listing:published-detail:${listingId}`;
-    await redis.del(key);
+    const pattern = `listing:published-detail:${listingId}:*`;
+    const keys = await redis.keys(pattern);
+    if (keys.length > 0) {
+      await redis.del(...keys);
+    }
   } catch (error) {
     console.error(
       new RedisError("Lỗi xóa cache chi tiết listing: " + error.message)
@@ -365,8 +369,10 @@ export const getListingByIdService = async (id, options = {}) => {
   }
 };
 
-export const getPublishedListingByIdService = async (id) => {
-  const cacheKey = `listing:published-detail:${id}`;
+export const getPublishedListingByIdService = async (id, currentUserId = null) => {
+  const cacheKey = currentUserId 
+    ? `listing:published-detail:${id}:user:${currentUserId}`
+    : `listing:published-detail:${id}:guest`;
   const redis = getRedis();
 
   try {
@@ -379,6 +385,24 @@ export const getPublishedListingByIdService = async (id) => {
   }
 
   try {
+    const isLikedLiteral = currentUserId
+      ? [
+          sequelize.literal(
+            `EXISTS(SELECT 1 FROM "comment_likes" WHERE "comment_likes"."comment_id" = "comments"."id" AND "comment_likes"."user_id" = '${currentUserId}')`
+          ),
+          "isLiked",
+        ]
+      : [sequelize.literal("false"), "isLiked"];
+
+    const isLikedLiteralReply = currentUserId
+      ? [
+          sequelize.literal(
+            `EXISTS(SELECT 1 FROM "comment_likes" WHERE "comment_likes"."comment_id" = "comments->replies"."id" AND "comment_likes"."user_id" = '${currentUserId}')`
+          ),
+          "isLiked",
+        ]
+      : [sequelize.literal("false"), "isLiked"];
+
     const listing = await Listing.findOne({
       where: {
         id: id,
@@ -412,6 +436,61 @@ export const getPublishedListingByIdService = async (id) => {
             "avatar",
           ],
         },
+        {
+          model: Comment,
+          as: "comments",
+          where: { parent_id: null, deleted_at: null },
+          required: false,
+          attributes: [
+            "id",
+            "user_id",
+            "parent_id",
+            "content",
+            "like_count",
+            "created_at",
+            "updated_at",
+            isLikedLiteral,
+          ],
+          include: [
+            {
+              model: User,
+              as: "user",
+              attributes: ["id", "full_name", "avatar"],
+            },
+            {
+              model: Comment,
+              as: "replies",
+              where: { deleted_at: null },
+              required: false,
+              attributes: [
+                "id",
+                "user_id",
+                "parent_id",
+                "content",
+                "like_count",
+                "created_at",
+                "updated_at",
+                isLikedLiteralReply,
+              ],
+              include: [
+                {
+                  model: User,
+                  as: "user",
+                  attributes: ["id", "full_name", "avatar"],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+      order: [
+        [{ model: Comment, as: "comments" }, "created_at", "DESC"],
+        [
+          { model: Comment, as: "comments" },
+          { model: Comment, as: "replies" },
+          "created_at",
+          "ASC",
+        ],
       ],
     });
 
@@ -1576,20 +1655,13 @@ export const hardDeleteListingService = async (listingId) => {
       }
     }
 
-    // 2. Xóa bài đăng (Cascade sẽ tự động xóa ListingImage trong DB)
+    // 2. Xóa bài đăng
     await listing.destroy({ transaction: t });
-
     await t.commit();
 
     // 3. Xóa cache nếu cần
-    try {
-      const {
-        clearListingSearchCache,
-        clearPublishedListingDetailCache,
-      } = await import("./listing.service.js"); // Tránh vòng lặp? Không, đây là chính nó.
-      // Thực tế các hàm này nên được import từ trên hoặc gọi trực tiếp nếu scope cho phép.
-      // Vì đang ở trong file này, tôi có thể gọi trực tiếp nếu chúng được định nghĩa.
-    } catch (e) {}
+    clearListingSearchCache();
+    clearPublishedListingDetailCache();
 
     return true;
   } catch (error) {
@@ -1740,7 +1812,6 @@ export const softDeleteListingService = async (listingId, userId) => {
     throw new DatabaseError("Lỗi không xác định khi cập nhật listing");
   }
 };
-
 
 // Toggle thêm hoặc xóa yêu thích bài đăng
 export const favoriteListingService = async (listingId, userId) => {

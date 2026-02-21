@@ -215,6 +215,10 @@ module.exports = {
         type: Sequelize.DOUBLE,
         allowNull: true,
       },
+      location: {
+        type: Sequelize.GEOGRAPHY("POINT", 4326),
+        allowNull: true,
+      },
       bedrooms: {
         type: Sequelize.INTEGER,
         allowNull: true,
@@ -753,6 +757,35 @@ module.exports = {
       },
     });
 
+    // Create destinations table
+    await queryInterface.createTable("destinations", {
+      id: {
+        type: Sequelize.UUID,
+        primaryKey: true,
+        defaultValue: Sequelize.literal("gen_random_uuid()"),
+      },
+      name: {
+        type: Sequelize.STRING(255),
+        allowNull: false,
+      },
+      type: {
+        type: Sequelize.STRING(50),
+        allowNull: false,
+      },
+      location: {
+        type: Sequelize.GEOGRAPHY("POINT", 4326),
+        allowNull: false,
+      },
+      province_code: {
+        type: Sequelize.INTEGER,
+        allowNull: true,
+      },
+      ward_code: {
+        type: Sequelize.INTEGER,
+        allowNull: true,
+      },
+    });
+
     // =============== ADD INDEXES ===============
 
     // Users table indexes
@@ -772,6 +805,11 @@ module.exports = {
     await queryInterface.addIndex("listings", ["bathroom"]);
     await queryInterface.addIndex("listings", ["latitude", "longitude"]);
     await queryInterface.addIndex("listings", ["deleted_at"]);
+    await queryInterface.sequelize.query(`
+      CREATE INDEX idx_listings_location
+      ON listings
+      USING GIST (location);
+    `);
 
     // Listing images indexes
     await queryInterface.addIndex("listing_images", ["listing_id"]);
@@ -834,6 +872,19 @@ module.exports = {
     await queryInterface.addIndex("event_logs", ["event_type"]);
     await queryInterface.addIndex("event_logs", ["entity_type", "entity_id"]);
     await queryInterface.addIndex("event_logs", ["created_at"]);
+
+    // Destinations indexes
+    await queryInterface.sequelize.query(`
+      CREATE INDEX idx_destinations_location
+      ON destinations
+      USING GIST (location);
+    `);
+    await queryInterface.addIndex("destinations", ["type"], {
+      name: "idx_destinations_type",
+    });
+    await queryInterface.addIndex("destinations", ["province_code"], {
+      name: "idx_destinations_province",
+    });
   },
 
   async down(queryInterface, Sequelize) {

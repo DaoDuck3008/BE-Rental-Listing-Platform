@@ -5,7 +5,7 @@ import UploadError from "../errors/UploadError.js";
 import db from "../models/index.js";
 import { destroyImages, uploadImage } from "./upload.service.js";
 import { randomUUID } from "crypto";
-import { Op, literal } from "sequelize";
+import { Op, literal, fn, col, where } from "sequelize";
 import AuthenticationError from "../errors/AuthenticationError.js";
 import BusinessError from "../errors/BusinessError.js";
 import AuthorizationError from "../errors/AuthorizationError.js";
@@ -22,6 +22,7 @@ const {
   Favorite,
   Comment,
   sequelize,
+  Destination,
 } = db;
 
 const clearListingSearchCache = async () => {
@@ -48,6 +49,65 @@ export const clearPublishedListingDetailCache = async (listingId) => {
     console.error(
       new RedisError("Lỗi xóa cache chi tiết listing: " + error.message)
     );
+  }
+};
+
+// Lấy danh sách điểm đến gần listing (dựa trên location của listing) trong bán kính nhất định
+export const getNearbyDestinations = async (
+  listingId,
+  { radius = 5000, type, limit = 20 }
+) => {
+  try {
+    const listing = await Listing.findByPk(listingId);
+
+    if (!listing) {
+      throw new NotFoundError("Không tìm thấy bài đăng để lấy điểm đến gần.");
+    }
+
+    const { longitude, latitude } = listing;
+
+    const destinations = await Destination.findAll({
+      attributes: [
+        "id",
+        "name",
+        "type",
+        "location",
+        [
+          fn(
+            "ST_Distance",
+            col("location"),
+            literal(`ST_GeogFromText('POINT(${longitude} ${latitude})')`)
+          ),
+          "distance",
+        ],
+      ],
+
+      where: {
+        ...(type && { type }),
+
+        [Op.and]: [
+          where(
+            fn(
+              "ST_DWithin",
+              col("location"),
+              literal(`ST_GeogFromText('POINT(${longitude} ${latitude})')`),
+              radius
+            ),
+            true
+          ),
+        ],
+      },
+
+      order: literal(`distance ASC`),
+      limit,
+    });
+
+    return destinations;
+  } catch (error) {
+    if (error instanceof NotFoundError) throw error;
+
+    console.error(error);
+    throw new DatabaseError("Lỗi khi lấy điểm đến gần listing");
   }
 };
 
@@ -89,9 +149,6 @@ export const searchPublishedListingsService = async (params) => {
     const p = parseInt(page) || 1;
     const l = parseInt(limit) || 12;
     const offset = (p - 1) * l;
-
-    // Nếu như có bán kính truyền về thì phải đổi từ mét sang km
-    const radiusKm = radius ? radius / 1000 : null;
 
     const querySearch = {
       status: "PUBLISHED",
@@ -184,21 +241,22 @@ export const searchPublishedListingsService = async (params) => {
     let havingCondition = undefined;
     let orderBy = [];
 
-    if (centerLat !== undefined && centerLong !== undefined && radiusKm) {
-      const distanceSql = `
-        6371 * acos(
-          cos(radians(${centerLat})) 
-          * cos(radians("Listing"."latitude")) 
-          * cos(radians("Listing"."longitude") - radians(${centerLong})) 
-          + sin(radians(${centerLat})) 
-          * sin(radians("Listing"."latitude"))
-        )
-      `;
-      const distanceLiteral = literal(distanceSql);
-      attributes.push([distanceLiteral, "distance"]);
+    if (centerLat !== undefined && centerLong !== undefined && radius) {
+      // radius is in meters from request
+      const pointSql = `ST_GeogFromText('POINT(${centerLong} ${centerLat})')`;
+
+      attributes.push([
+        fn("ST_Distance", col("location"), literal(pointSql)),
+        "distance",
+      ]);
 
       if (!querySearch[Op.and]) querySearch[Op.and] = [];
-      querySearch[Op.and].push(literal(`(${distanceSql}) <= ${radiusKm}`));
+      querySearch[Op.and].push(
+        where(
+          fn("ST_DWithin", col("location"), literal(pointSql), radius),
+          true
+        )
+      );
 
       orderBy.push([literal("distance"), "ASC"]);
     }
@@ -771,6 +829,16 @@ export const createListingService = async (
         latitude: listingData.latitude
           ? parseFloat(listingData.latitude)
           : null,
+        location:
+          listingData.longitude && listingData.latitude
+            ? {
+                type: "Point",
+                coordinates: [
+                  parseFloat(listingData.longitude),
+                  parseFloat(listingData.latitude),
+                ],
+              }
+            : null,
         show_phone_number:
           listingData.showPhoneNumber !== undefined
             ? Boolean(listingData.showPhoneNumber)
@@ -1016,6 +1084,28 @@ export const updateListingService = async (
     }
 
     // 5. Cập nhật các trường cơ bản
+    // Đồng bộ trường location GEOGRAPHY if lon/lat thay đổi
+    if (
+      dataToUpdate.longitude !== undefined ||
+      dataToUpdate.latitude !== undefined
+    ) {
+      const lon =
+        dataToUpdate.longitude !== undefined
+          ? dataToUpdate.longitude
+          : listing.longitude;
+      const lat =
+        dataToUpdate.latitude !== undefined
+          ? dataToUpdate.latitude
+          : listing.latitude;
+
+      if (lon !== null && lat !== null) {
+        dataToUpdate.location = {
+          type: "Point",
+          coordinates: [parseFloat(lon), parseFloat(lat)],
+        };
+      }
+    }
+
     await listing.update(dataToUpdate, { transaction: t });
 
     // 6. Cập nhật Tiện ích (Amenities)

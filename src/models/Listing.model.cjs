@@ -110,6 +110,10 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.DOUBLE,
         allowNull: true,
       },
+      location: {
+        type: DataTypes.GEOGRAPHY("POINT"),
+        allowNull: true,
+      },
       bedrooms: {
         type: DataTypes.INTEGER,
         allowNull: true,

@@ -11,6 +11,7 @@ import {
   showListingService,
   renewListingService,
   favoriteListingService,
+  getNearbyDestinations,
 } from "../services/listing.service.js";
 import AuthenticationError from "../errors/AuthenticationError.js";
 import { getAllListingTypesService } from "../services/listingType.service.js";
@@ -37,6 +38,24 @@ export const getAllPublishedListings = async (req, res, next) => {
         totalItems: result.count,
         totalPages: Math.ceil(result.count / limit),
       },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getNearbyDestinationsListing = async (req, res, next) => {
+  try {
+    const { id: listingId } = req.params;
+    const result = await getNearbyDestinations(listingId, {
+      limit: 10,
+      radius: 1000,
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Lấy danh sách điểm đến gần bài đăng thành công",
+      data: result,
     });
   } catch (error) {
     next(error);

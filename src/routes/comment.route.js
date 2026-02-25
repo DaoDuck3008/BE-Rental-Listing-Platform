@@ -1,5 +1,5 @@
 import express from "express";
-import { protect, requireRole } from "../middlewares/auth.middleware.js";
+import { optionalProtect, protect } from "../middlewares/auth.middleware.js";
 import {
   create,
   destroy,
@@ -10,9 +10,10 @@ import {
 
 const router = express.Router();
 
+router.get("/listings/:id", optionalProtect, index);
+
 router.use(protect);
 
-router.get("/listings/:id", index);
 router.post("/listings/:id", create);
 router.put("/:id", update);
 router.delete("/:id", destroy);

@@ -453,24 +453,6 @@ export const getPublishedListingByIdService = async (
   }
 
   try {
-    const isLikedLiteral = currentUserId
-      ? [
-          sequelize.literal(
-            `EXISTS(SELECT 1 FROM "comment_likes" WHERE "comment_likes"."comment_id" = "comments"."id" AND "comment_likes"."user_id" = '${currentUserId}')`
-          ),
-          "isLiked",
-        ]
-      : [sequelize.literal("false"), "isLiked"];
-
-    const isLikedLiteralReply = currentUserId
-      ? [
-          sequelize.literal(
-            `EXISTS(SELECT 1 FROM "comment_likes" WHERE "comment_likes"."comment_id" = "comments->replies"."id" AND "comment_likes"."user_id" = '${currentUserId}')`
-          ),
-          "isLiked",
-        ]
-      : [sequelize.literal("false"), "isLiked"];
-
     const listing = await Listing.findOne({
       where: {
         id: id,
@@ -504,61 +486,6 @@ export const getPublishedListingByIdService = async (
             "avatar",
           ],
         },
-        {
-          model: Comment,
-          as: "comments",
-          where: { parent_id: null, deleted_at: null },
-          required: false,
-          attributes: [
-            "id",
-            "user_id",
-            "parent_id",
-            "content",
-            "like_count",
-            "created_at",
-            "updated_at",
-            isLikedLiteral,
-          ],
-          include: [
-            {
-              model: User,
-              as: "user",
-              attributes: ["id", "full_name", "avatar"],
-            },
-            {
-              model: Comment,
-              as: "replies",
-              where: { deleted_at: null },
-              required: false,
-              attributes: [
-                "id",
-                "user_id",
-                "parent_id",
-                "content",
-                "like_count",
-                "created_at",
-                "updated_at",
-                isLikedLiteralReply,
-              ],
-              include: [
-                {
-                  model: User,
-                  as: "user",
-                  attributes: ["id", "full_name", "avatar"],
-                },
-              ],
-            },
-          ],
-        },
-      ],
-      order: [
-        [{ model: Comment, as: "comments" }, "created_at", "DESC"],
-        [
-          { model: Comment, as: "comments" },
-          { model: Comment, as: "replies" },
-          "created_at",
-          "ASC",
-        ],
       ],
     });
 

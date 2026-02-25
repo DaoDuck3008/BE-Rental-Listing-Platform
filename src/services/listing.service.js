@@ -180,15 +180,22 @@ export const searchPublishedListingsService = async (params) => {
       querySearch.bedrooms = { [Op.gte]: beds };
     }
 
-    // tìm kiếm theo Bounding Box
+    // tìm kiếm theo Bounding Box (Map) sử dụng PostGIS
     const { minLat, maxLat, minLng, maxLng, include_markers } = params;
     if (minLat && maxLat && minLng && maxLng) {
-      querySearch.latitude = {
-        [Op.between]: [parseFloat(minLat), parseFloat(maxLat)],
-      };
-      querySearch.longitude = {
-        [Op.between]: [parseFloat(minLng), parseFloat(maxLng)],
-      };
+      if (!querySearch[Op.and]) querySearch[Op.and] = [];
+      querySearch[Op.and].push(
+        where(
+          literal(
+            `ST_Intersects("location", ST_MakeEnvelope(${parseFloat(
+              minLng
+            )}, ${parseFloat(minLat)}, ${parseFloat(maxLng)}, ${parseFloat(
+              maxLat
+            )}, 4326)::geography)`
+          ),
+          true
+        )
+      );
     }
 
     const include = [
@@ -305,17 +312,12 @@ export const searchPublishedListingsService = async (params) => {
         "area",
       ];
 
-      if (centerLat !== undefined && centerLong !== undefined && radiusKm) {
-        const distanceSql = `
-          6371 * acos(
-            cos(radians(${centerLat})) 
-            * cos(radians("Listing"."latitude")) 
-            * cos(radians("Listing"."longitude") - radians(${centerLong})) 
-            + sin(radians(${centerLat})) 
-            * sin(radians("Listing"."latitude"))
-          )
-        `;
-        markerAttributes.push([literal(distanceSql), "distance"]);
+      if (centerLat !== undefined && centerLong !== undefined && radius) {
+        const pointSql = `ST_GeogFromText('POINT(${centerLong} ${centerLat})')`;
+        markerAttributes.push([
+          fn("ST_Distance", col("location"), literal(pointSql)),
+          "distance",
+        ]);
       }
 
       markers = await Listing.findAll({

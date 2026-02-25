@@ -130,13 +130,30 @@ export const searchPublishedListingsService = async (params) => {
       centerLat,
       centerLong,
       radius,
+      minLat,
+      maxLat,
+      minLng,
+      maxLng,
+      include_markers,
     } = params;
 
-    // Tạo cache key dựa trên params
-    const cacheKey = `listings:search:${JSON.stringify(params)}`;
+    const snap = (val) =>
+      val ? Math.round(parseFloat(val) * 1000) / 1000 : val;
+
+    const stableParams = {
+      ...params,
+      minLat: snap(minLat),
+      maxLat: snap(maxLat),
+      minLng: snap(minLng),
+      maxLng: snap(maxLng),
+      centerLat: snap(centerLat),
+      centerLong: snap(centerLong),
+      radius: radius ? Math.round(radius / 100) * 100 : undefined,
+    };
+
+    const cacheKey = `listings:search:${JSON.stringify(stableParams)}`;
     const redis = getRedis();
 
-    // Kiểm tra cache đã tồn tại hay chưa
     try {
       const cachedData = await redis.get(cacheKey);
       if (cachedData) {
@@ -181,7 +198,6 @@ export const searchPublishedListingsService = async (params) => {
     }
 
     // tìm kiếm theo Bounding Box (Map) sử dụng PostGIS
-    const { minLat, maxLat, minLng, maxLng, include_markers } = params;
     if (minLat && maxLat && minLng && maxLng) {
       if (!querySearch[Op.and]) querySearch[Op.and] = [];
       querySearch[Op.and].push(
@@ -358,6 +374,107 @@ export const searchPublishedListingsService = async (params) => {
   } catch (error) {
     if (error instanceof DatabaseError) throw error;
     throw new DatabaseError("Lỗi khi tìm kiếm bài đăng: " + error.message);
+  }
+};
+
+export const getRelatedListings = async (listingId) => {
+  const cacheKey = `listings:related:${listingId}`;
+  const redis = getRedis();
+
+  try {
+    const cachedData = await redis.get(cacheKey);
+    if (cachedData) {
+      return JSON.parse(cachedData);
+    }
+  } catch (error) {
+    console.error(new RedisError("Lỗi lấy cache bài đăng liên quan: " + error.message));
+  }
+
+  try {
+    const listing = await Listing.findByPk(listingId);
+    if (!listing)
+      throw new NotFoundError(
+        "Không tìm thấy bài đăng để lấy bài đăng liên quan."
+      );
+
+    if (!listing.location || !listing.location.coordinates) {
+      throw new NotFoundError(
+        "Bài đăng không có thông tin vị trí để tìm bài đăng liên quan."
+      );
+    }
+
+    const [lng, lat] = listing.location.coordinates;
+    const point = literal(
+      `ST_SetSRID(ST_MakePoint(${lng}, ${lat}), 4326)::geography`
+    );
+
+    const priceVal = parseFloat(listing.price) || 0;
+    const areaVal = parseFloat(listing.area) || 0;
+
+    const related = await Listing.findAll({
+      attributes: {
+        include: [
+          [
+            literal(`
+              (
+                (1 / (1 + ST_Distance("Listing"."location", ${point.val})/1000)) * 5
+                +
+                (1 - ABS("Listing"."price" - ${priceVal}) / NULLIF(${priceVal}, 0)) * 3
+                +
+                (1 - ABS("Listing"."area" - ${areaVal}) / NULLIF(${areaVal}, 0)) * 2
+              )
+            `),
+            "score",
+          ],
+        ],
+      },
+
+      include: [
+        {
+          model: ListingImage,
+          as: "images",
+          attributes: ["image_url", "sort_order"],
+        },
+        {
+          model: ListingType,
+          as: "listing_type",
+          attributes: ["code", "name"],
+        },
+      ],
+
+      where: {
+        id: { [Op.ne]: listingId },
+        status: "PUBLISHED",
+        [Op.and]: [
+          where(
+            fn("ST_DWithin", col("location"), point, 50000), 
+            true
+          ),
+        ],
+      },
+
+      order: [
+        [literal("score"), "DESC"],
+        [{ model: ListingImage, as: "images" }, "sort_order", "ASC"],
+      ],
+
+      limit: 6,
+      distinct: true, 
+    });
+
+    try {
+      await redis.set(cacheKey, JSON.stringify(related), "EX", 600); 
+    } catch (error) {
+      console.error(new RedisError("Lỗi lưu cache bài đăng liên quan: " + error.message));
+    }
+
+    return related;
+  } catch (error) {
+    if (error instanceof NotFoundError || error instanceof DatabaseError)
+      throw error;
+
+    console.error(error);
+    throw new DatabaseError("Lỗi khi lấy bài đăng liên quan");
   }
 };
 

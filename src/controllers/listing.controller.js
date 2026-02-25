@@ -1,6 +1,7 @@
 import {
   createListingService,
   getPublishedListingByIdService,
+  getRelatedListings,
   getListingsByOwnerIdService,
   searchPublishedListingsService,
   submitDraftListingService,
@@ -55,6 +56,19 @@ export const getNearbyDestinationsListing = async (req, res, next) => {
     res.status(200).json({
       success: true,
       message: "Lấy danh sách điểm đến gần bài đăng thành công",
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getRelatedListingsController = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const result = await getRelatedListings(id);
+    res.status(200).json({
+      success: true,
       data: result,
     });
   } catch (error) {

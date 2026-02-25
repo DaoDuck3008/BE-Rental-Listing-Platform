@@ -17,6 +17,7 @@ import {
   getAllPublishedListings,
   favoriteListing,
   getNearbyDestinationsListing,
+  getRelatedListingsController,
 } from "../controllers/listing.controller.js";
 import {
   protect,
@@ -51,6 +52,7 @@ router.get(
 );
 router.get("/:id", optionalProtect, getPublishedListingById);
 router.get("/:id/nearby-destinations", getNearbyDestinationsListing);
+router.get("/:id/related", getRelatedListingsController);
 
 router.post(
   "/create",

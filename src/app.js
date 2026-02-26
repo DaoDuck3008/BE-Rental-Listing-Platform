@@ -16,6 +16,7 @@ import adminRoutes from "./routes/admin.route.js";
 import commentRoutes from "./routes/comment.route.js";
 import destinationRoutes from "./routes/destination.route.js";
 import listingTypeRoutes from "./routes/listingType.route.js";
+import roleRoutes from "./routes/role.route.js";
 
 import { initRedis } from "./config/redis.js";
 import { startSyncListingViewsJob } from "./jobs/syncListingViews.job.js";
@@ -63,6 +64,7 @@ app.use("/api/admin", adminRoutes);
 app.use("/api/comments", commentRoutes);
 app.use("/api/destinations", destinationRoutes);
 app.use("/api/listing-types", listingTypeRoutes);
+app.use("/api/roles", roleRoutes);
 
 // CRON JOB (TEMPORARY FOR DEV)
 startSyncListingViewsJob();

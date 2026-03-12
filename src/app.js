@@ -18,6 +18,7 @@ import destinationRoutes from "./routes/destination.route.js";
 import listingTypeRoutes from "./routes/listingType.route.js";
 import roleRoutes from "./routes/role.route.js";
 import chatRoutes from "./routes/chat.route.js";
+import notificationRoutes from "./routes/notification.route.js";
 
 import { initRedis } from "./config/redis.js";
 import { startSyncListingViewsJob } from "./jobs/syncListingViews.job.js";
@@ -29,7 +30,7 @@ const app = express();
 // MIDDLEWARE
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL,
+    origin: [process.env.FRONTEND_URL_1], 
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
@@ -67,6 +68,7 @@ app.use("/api/destinations", destinationRoutes);
 app.use("/api/listing-types", listingTypeRoutes);
 app.use("/api/roles", roleRoutes);
 app.use("/api/chats", chatRoutes);
+app.use("/api/notifications", notificationRoutes);
 
 // CRON JOB (TEMPORARY FOR DEV)
 startSyncListingViewsJob();

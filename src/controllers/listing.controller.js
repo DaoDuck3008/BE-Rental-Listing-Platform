@@ -18,6 +18,7 @@ import AuthenticationError from "../errors/AuthenticationError.js";
 import { getAllListingTypesService } from "../services/listingType.service.js";
 import { hashIP } from "../utils/hash.util.js";
 import { increaseViewListingIfNeeded } from "../services/view.service.js";
+import { createNotification } from "../services/notification.service.js";
 
 export const getAllPublishedListings = async (req, res, next) => {
   try {
@@ -395,6 +396,18 @@ export const favoriteListing = async (req, res, next) => {
       );
 
     const result = await favoriteListingService(id, userId); // Kết quả nhận được là False - Xoá khỏi yêu thích, True - Thêm vào yêu thích
+
+    // Notification
+    if (result) {
+      await createNotification(
+        {
+          message: "Ai đó đã thêm bài đăng của bạn vào mục yêu thích!",
+          type: "NEW_FAVORITE",
+          referenceId: id,
+        },
+        userId
+      );
+    }
 
     return res.status(200).json({
       success: true,

@@ -40,7 +40,7 @@ export const login = async (req, res, next) => {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
         sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
-        maxAge: maxAge,
+        expires: maxAge ? new Date(Date.now() + maxAge) : undefined,
         // path: "/api/auth/refresh",
       })
       .json({
@@ -93,7 +93,7 @@ export const googleLogin = async (req, res, next) => {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
         sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
-        maxAge: maxAge,
+        expires: new Date(Date.now() + maxAge),
         // path: "/api/auth/refresh",
       })
       .json({

@@ -10,6 +10,7 @@ import {
   hardDeleteListingService,
   updateListingService,
 } from "../services/listing.service.js";
+import { createNotification } from "../services/notification.service.js";
 
 export const getListingStatsForAdmin = async (req, res, next) => {
   try {
@@ -80,6 +81,16 @@ export const approveListing = async (req, res, next) => {
 
     const result = await approveListingService(id);
 
+    // Notification
+    await createNotification(
+      {
+        message: "Bài đăng của bạn đã được phê duyệt!",
+        type: "NEW_APPROVED",
+        referenceId: id,
+      },
+      req.user.id
+    );
+
     return res.status(200).json({
       success: true,
       message: "Duyệt bài đăng thành công",
@@ -97,6 +108,16 @@ export const rejectListing = async (req, res, next) => {
     const { reason } = req.body;
 
     const result = await rejectListingService(id, reason);
+
+    // Notification
+    await createNotification(
+      {
+        message: `Bài đăng của bạn đã bị từ chối. Lý do: ${reason}`,
+        type: "NEW_REJECTED",
+        referenceId: id,
+      },
+      req.user.id
+    );
 
     return res.status(200).json({
       success: true,

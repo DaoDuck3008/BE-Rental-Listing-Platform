@@ -1,6 +1,6 @@
 import http from "http";
 import app from "./app.js";
-import { initSocket } from "./sockets/chat.socket.js";
+import { initSocket } from "./sockets/index.js";
 
 const PORT = process.env.PORT || 5000;
 

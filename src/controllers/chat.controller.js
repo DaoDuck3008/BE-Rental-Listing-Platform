@@ -9,7 +9,14 @@ import {
   updateMessage,
   deleteMessage,
 } from "../services/chat.service.js";
-import { emitToUser, emitMessageUpdate, emitMessageDelete } from "../sockets/chat.socket.js";
+import { 
+  emitNewMessage, 
+  emitMessageUpdate, 
+  emitMessageDelete, 
+  emitMessageRead, 
+  emitChatDelete 
+} from "../sockets/chat.socket.js";
+import { createNotification } from "../services/notification.service.js";
 
 export const create = async (req, res, next) => {
   try {
@@ -97,12 +104,18 @@ export const send = async (req, res, next) => {
     
     // Gửi sự kiện 'new_message' cho cả 2 người để giao diện cập nhật ngay lập tức
     participantIds.forEach(id => {
-      emitToUser(id, "new_message", {
-        chatId,
-        message: message.toJSON() // Chuyển từ instance Sequelize sang object thuần
-      });
+      emitNewMessage(id, chatId, message);
     });
-    // ----------------------
+
+    // Notification
+    await createNotification(
+      {
+        message: `Bạn có tin nhắn mới: "${content.substring(0, 50)}${content.length > 50 ? "..." : ""}"`,
+        type: "NEW_MESSAGE",
+        referenceId: chatId,
+      },
+      userId
+    );
 
     res.status(201).json({
       success: true,
@@ -122,11 +135,7 @@ export const markRead = async (req, res, next) => {
 
     // --- SOCKET LOGIC ---
     // Thông báo cho người gửi tin nhắn rằng tin nhắn của họ đã được đọc
-    emitToUser(message.sender_id, "message_read", {
-      messageId,
-      chatId: message.chat_id,
-      readerId: userId
-    });
+    emitMessageRead(message.sender_id, messageId, message.chat_id, userId);
     // ----------------------
 
     res.status(200).json({
@@ -152,7 +161,7 @@ export const destroy = async (req, res, next) => {
     // --- SOCKET LOGIC ---
     // Thông báo cho người còn lại rằng cuộc trò chuyện đã bị xóa
     if (otherParticipantId) {
-      emitToUser(otherParticipantId, "chat_deleted", { chatId });
+      emitChatDelete(otherParticipantId, chatId);
     }
     // ----------------------
 

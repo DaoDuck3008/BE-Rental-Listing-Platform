@@ -4,6 +4,7 @@ import db from "../models/index.js";
 import NotFoundError from "../errors/NotFoundError.js";
 import AuthorizationError from "../errors/AuthorizationError.js";
 import { clearPublishedListingDetailCache } from "./listing.service.js";
+import { createAuditLog } from "./auditLog.service.js";
 
 const { Comment, Listing, User, CommentLike, sequelize } = db;
 
@@ -139,7 +140,8 @@ export const createComment = async (
   listingId,
   userId,
   content,
-  parent_id = null
+  parent_id = null,
+  auditInfo = {}
 ) => {
   try {
     const listing = await Listing.findOne({
@@ -180,6 +182,18 @@ export const createComment = async (
     });
 
     await clearPublishedListingDetailCache(listingId);
+
+    // Log action
+    await createAuditLog({
+      userId,
+      action: "CREATE_COMMENT",
+      entityType: "Comment",
+      entityId: newComment.id,
+      newData: newComment.toJSON(),
+      ipAddress: auditInfo.ipAddress,
+      userAgent: auditInfo.userAgent,
+    });
+
     return commentWithUser;
   } catch (error) {
     if (
@@ -198,7 +212,7 @@ export const createComment = async (
   }
 };
 
-export const updateComment = async (commentId, userId, content) => {
+export const updateComment = async (commentId, userId, content, auditInfo = {}) => {
   try {
     const comment = await Comment.findByPk(commentId);
 
@@ -239,7 +253,23 @@ export const updateComment = async (commentId, userId, content) => {
       ],
     });
 
+    const oldData = comment.previous();
+    const newData = updatedComment.toJSON();
+
     await clearPublishedListingDetailCache(comment.listing_id);
+
+    // Log action
+    await createAuditLog({
+      userId,
+      action: "UPDATE_COMMENT",
+      entityType: "Comment",
+      entityId: commentId,
+      oldData,
+      newData,
+      ipAddress: auditInfo.ipAddress,
+      userAgent: auditInfo.userAgent,
+    });
+
     return updatedComment;
   } catch (error) {
     if (error instanceof NotFoundError || error instanceof AuthorizationError) {
@@ -254,7 +284,7 @@ export const updateComment = async (commentId, userId, content) => {
   }
 };
 
-export const deleteComment = async (commentId, userId) => {
+export const deleteComment = async (commentId, userId, auditInfo = {}) => {
   try {
     const comment = await Comment.findByPk(commentId);
 
@@ -268,6 +298,18 @@ export const deleteComment = async (commentId, userId) => {
 
     await comment.update({ deleted_at: new Date() });
     await clearPublishedListingDetailCache(comment.listing_id);
+
+    // Log action
+    await createAuditLog({
+      userId,
+      action: "DELETE_COMMENT",
+      entityType: "Comment",
+      entityId: commentId,
+      oldData: { deleted_at: null },
+      newData: { deleted_at: comment.deleted_at },
+      ipAddress: auditInfo.ipAddress,
+      userAgent: auditInfo.userAgent,
+    });
 
     return true;
   } catch (error) {

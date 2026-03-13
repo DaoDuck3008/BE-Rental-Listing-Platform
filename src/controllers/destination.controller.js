@@ -9,7 +9,10 @@ import {
 
 export const create = async (req, res, next) => {
   try {
-    const result = await createDestinationService(req.body);
+    const result = await createDestinationService(req.body, req.user.id, {
+      ipAddress: req.ip,
+      userAgent: req.get("user-agent"),
+    });
 
     res.status(201).json({
       success: true,
@@ -74,7 +77,10 @@ export const update = async (req, res, next) => {
   try {
     const { id: destinationId } = req.params;
 
-    const result = await updateDestinationService(destinationId, req.body);
+    const result = await updateDestinationService(destinationId, req.body, req.user.id, {
+      ipAddress: req.ip,
+      userAgent: req.get("user-agent"),
+    });
 
     res.status(200).json({
       success: true,
@@ -90,7 +96,10 @@ export const destroy = async (req, res, next) => {
   try {
     const { id: destinationId } = req.params;
 
-    await deleteDestinationService(destinationId);
+    await deleteDestinationService(destinationId, req.user.id, {
+      ipAddress: req.ip,
+      userAgent: req.get("user-agent"),
+    });
 
     res.status(200).json({
       success: true,

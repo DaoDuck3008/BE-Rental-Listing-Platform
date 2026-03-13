@@ -34,7 +34,10 @@ export const getListingTypeById = async (req, res, next) => {
 
 export const createListingType = async (req, res, next) => {
   try {
-    const listingType = await createListingTypeService(req.body);
+    const listingType = await createListingTypeService(req.body, req.user.id, {
+      ipAddress: req.ip,
+      userAgent: req.get("user-agent"),
+    });
     return res.status(201).json({
       success: true,
       message: "Tạo loại bài đăng thành công",
@@ -48,7 +51,10 @@ export const createListingType = async (req, res, next) => {
 export const updateListingType = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const listingType = await updateListingTypeService(id, req.body);
+    const listingType = await updateListingTypeService(id, req.body, req.user.id, {
+      ipAddress: req.ip,
+      userAgent: req.get("user-agent"),
+    });
     return res.status(200).json({
       success: true,
       message: "Cập nhật loại bài đăng thành công",
@@ -62,7 +68,10 @@ export const updateListingType = async (req, res, next) => {
 export const deleteListingType = async (req, res, next) => {
   try {
     const { id } = req.params;
-    await deleteListingTypeService(id);
+    await deleteListingTypeService(id, req.user.id, {
+      ipAddress: req.ip,
+      userAgent: req.get("user-agent"),
+    });
     return res.status(200).json({
       success: true,
       message: "Xóa loại bài đăng thành công",

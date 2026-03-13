@@ -79,7 +79,10 @@ export const approveListing = async (req, res, next) => {
   try {
     const { id } = req.params;
 
-    const result = await approveListingService(id);
+    const result = await approveListingService(id, req.user.id, {
+      ipAddress: req.ip,
+      userAgent: req.get("user-agent"),
+    });
 
     // Notification
     await createNotification(
@@ -107,7 +110,10 @@ export const rejectListing = async (req, res, next) => {
     const { id } = req.params;
     const { reason } = req.body;
 
-    const result = await rejectListingService(id, reason);
+    const result = await rejectListingService(id, reason, req.user.id, {
+      ipAddress: req.ip,
+      userAgent: req.get("user-agent"),
+    });
 
     // Notification
     await createNotification(
@@ -134,7 +140,10 @@ export const approveEditDraft = async (req, res, next) => {
   try {
     const { id } = req.params;
 
-    const result = await approveEditDraftListingService(id);
+    const result = await approveEditDraftListingService(id, req.user.id, {
+      ipAddress: req.ip,
+      userAgent: req.get("user-agent"),
+    });
 
     return res.status(200).json({
       success: true,
@@ -152,7 +161,10 @@ export const rejectEditDraft = async (req, res, next) => {
     const { id } = req.params;
     const { reason } = req.body;
 
-    const result = await rejectEditDraftListingService(id, reason);
+    const result = await rejectEditDraftListingService(id, reason, req.user.id, {
+      ipAddress: req.ip,
+      userAgent: req.get("user-agent"),
+    });
 
     return res.status(200).json({
       success: true,
@@ -167,7 +179,10 @@ export const rejectEditDraft = async (req, res, next) => {
 export const hardDeleteListing = async (req, res, next) => {
   try {
     const { id } = req.params;
-    await hardDeleteListingService(id);
+    await hardDeleteListingService(id, req.user.id, {
+      ipAddress: req.ip,
+      userAgent: req.get("user-agent"),
+    });
 
     return res.status(200).json({
       success: true,
@@ -192,7 +207,8 @@ export const updateListingByAdmin = async (req, res, next) => {
       data,
       images,
       coverImageIndex,
-      true // isAdmin
+      true, // isAdmin
+      { ipAddress: req.ip, userAgent: req.get("user-agent") }
     );
 
     return res.status(200).json({

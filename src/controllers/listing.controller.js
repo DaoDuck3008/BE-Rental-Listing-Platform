@@ -177,7 +177,10 @@ export const createListing = async (req, res, next) => {
       userId,
       data,
       images,
-      coverImageIndex
+      coverImageIndex,
+      "PENDING",
+      null,
+      { ipAddress: req.ip, userAgent: req.get("user-agent") }
     );
 
     return res.status(201).json({
@@ -206,7 +209,9 @@ export const createDraftListing = async (req, res, next) => {
       data,
       images,
       coverImageIndex,
-      "DRAFT"
+      "DRAFT",
+      null,
+      { ipAddress: req.ip, userAgent: req.get("user-agent") }
     );
 
     return res.status(201).json({
@@ -231,7 +236,9 @@ export const updateSoftPublisedListing = async (req, res, next) => {
       userId,
       data,
       images,
-      coverImageIndex
+      coverImageIndex,
+      false,
+      { ipAddress: req.ip, userAgent: req.get("user-agent") }
     );
 
     return res.status(200).json({
@@ -259,7 +266,8 @@ export const updateHardPublishedListing = async (req, res, next) => {
       images,
       coverImageIndex,
       "EDIT_DRAFT",
-      id
+      id,
+      { ipAddress: req.ip, userAgent: req.get("user-agent") }
     );
 
     return res.status(200).json({
@@ -286,7 +294,9 @@ export const updateDraftListing = async (req, res, next) => {
       userId,
       data,
       images,
-      coverImageIndex
+      coverImageIndex,
+      false,
+      { ipAddress: req.ip, userAgent: req.get("user-agent") }
     );
 
     return res.status(200).json({
@@ -305,7 +315,10 @@ export const submitDraftListing = async (req, res, next) => {
     const { id } = req.params;
     const images = req.files;
 
-    const result = await submitDraftListingService(id, images);
+    const result = await submitDraftListingService(id, {
+      ipAddress: req.ip,
+      userAgent: req.get("user-agent"),
+    });
 
     return res.status(201).json({
       success: true,
@@ -323,7 +336,10 @@ export const hideListing = async (req, res, next) => {
     const { id } = req.params;
     const userId = req.user.id;
 
-    await hideListingService(id, userId);
+    await hideListingService(id, userId, {
+      ipAddress: req.ip,
+      userAgent: req.get("user-agent"),
+    });
 
     return res.status(200).json({
       success: true,
@@ -340,7 +356,10 @@ export const showListing = async (req, res, next) => {
     const { id } = req.params;
     const userId = req.user.id;
 
-    await showListingService(id, userId);
+    await showListingService(id, userId, {
+      ipAddress: req.ip,
+      userAgent: req.get("user-agent"),
+    });
 
     return res.status(200).json({
       success: true,
@@ -357,7 +376,10 @@ export const renewListing = async (req, res, next) => {
     const { id } = req.params;
     const userId = req.user.id;
 
-    await renewListingService(id, userId);
+    await renewListingService(id, userId, {
+      ipAddress: req.ip,
+      userAgent: req.get("user-agent"),
+    });
 
     return res.status(200).json({
       success: true,
@@ -374,7 +396,10 @@ export const softDeleteListing = async (req, res, next) => {
     const { id } = req.params;
     const userId = req.user.id;
 
-    await softDeleteListingService(id, userId);
+    await softDeleteListingService(id, userId, {
+      ipAddress: req.ip,
+      userAgent: req.get("user-agent"),
+    });
 
     return res.status(200).json({
       success: true,

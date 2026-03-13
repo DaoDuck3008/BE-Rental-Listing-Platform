@@ -3,6 +3,7 @@ import { getRedis } from "../config/redis.js";
 import NotFoundError from "../errors/NotFoundError.js";
 import RedisError from "../errors/RedisError.js";
 import BusinessError from "../errors/BusinessError.js";
+import { createAuditLog } from "./auditLog.service.js";
 
 const { Role, User } = db;
 
@@ -56,7 +57,7 @@ export const getRoleByIdService = async (id) => {
   return role;
 };
 
-export const createRoleService = async (data) => {
+export const createRoleService = async (data, adminId, auditInfo = {}) => {
   // Check if code already exists
   const existingRole = await Role.findOne({ where: { code: data.code } });
   if (existingRole) {
@@ -65,10 +66,22 @@ export const createRoleService = async (data) => {
 
   const role = await Role.create(data);
   await clearRolesCache();
+
+  // Log action
+  await createAuditLog({
+    userId: adminId,
+    action: "CREATE_ROLE",
+    entityType: "Role",
+    entityId: role.id,
+    newData: role.toJSON(),
+    ipAddress: auditInfo.ipAddress,
+    userAgent: auditInfo.userAgent,
+  });
+
   return role;
 };
 
-export const updateRoleService = async (id, data) => {
+export const updateRoleService = async (id, data, adminId, auditInfo = {}) => {
   const role = await Role.findByPk(id);
   if (!role) {
     throw new NotFoundError("Không tìm thấy quyền hạn để cập nhật.");
@@ -81,12 +94,27 @@ export const updateRoleService = async (id, data) => {
     }
   }
 
+  const oldData = role.toJSON();
   await role.update(data);
+  const newData = role.toJSON();
   await clearRolesCache();
+
+  // Log action
+  await createAuditLog({
+    userId: adminId,
+    action: "UPDATE_ROLE",
+    entityType: "Role",
+    entityId: id,
+    oldData,
+    newData,
+    ipAddress: auditInfo.ipAddress,
+    userAgent: auditInfo.userAgent,
+  });
+
   return role;
 };
 
-export const deleteRoleService = async (id) => {
+export const deleteRoleService = async (id, adminId, auditInfo = {}) => {
   const role = await Role.findByPk(id);
   if (!role) {
     throw new NotFoundError("Không tìm thấy quyền hạn để xóa.");
@@ -103,8 +131,21 @@ export const deleteRoleService = async (id) => {
     );
   }
 
+  const oldData = role.toJSON();
   await role.destroy();
   await clearRolesCache();
+
+  // Log action
+  await createAuditLog({
+    userId: adminId,
+    action: "DELETE_ROLE",
+    entityType: "Role",
+    entityId: id,
+    oldData,
+    ipAddress: auditInfo.ipAddress,
+    userAgent: auditInfo.userAgent,
+  });
+
   return true;
 };
 

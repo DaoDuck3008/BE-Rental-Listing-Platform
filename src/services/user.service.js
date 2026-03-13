@@ -5,6 +5,7 @@ import NotFoundError from "../errors/NotFoundError.js";
 import UploadError from "../errors/UploadError.js";
 import AuthenticationError from "../errors/AuthenticationError.js";
 import DatabaseError from "../errors/DatabaseError.js";
+import { createAuditLog } from "./auditLog.service.js";
 
 const { User, Role, Favorite, ListingImage, Listing, ListingType } = db;
 
@@ -40,7 +41,7 @@ export const getUserByEmail = async (userEmail) => {
   return user;
 };
 
-export const updateUserProfile = async (userId, userData, userFile) => {
+export const updateUserProfile = async (userId, userData, userFile, auditInfo = {}) => {
   const user = await User.findOne({ where: { id: userId } });
 
   if (!user) {
@@ -86,7 +87,21 @@ export const updateUserProfile = async (userId, userData, userFile) => {
     }
   }
 
+  const oldData = user.toJSON();
   await user.update(updateData, { where: { id: userId } });
+  const newData = user.toJSON();
+
+  // Log action
+  await createAuditLog({
+    userId,
+    action: "UPDATE_USER_PROFILE",
+    entityType: "User",
+    entityId: userId,
+    oldData,
+    newData,
+    ipAddress: auditInfo.ipAddress,
+    userAgent: auditInfo.userAgent,
+  });
 
   return { EC: 0, EM: "Cập nhật hồ sơ thành công" };
 };

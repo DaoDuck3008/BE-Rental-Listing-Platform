@@ -4,6 +4,7 @@ import DatabaseError from "../errors/DatabaseError.js";
 import { fn, col, literal } from "sequelize";
 import sequelize from "../config/database.js";
 import NotFoundError from "../errors/NotFoundError.js";
+import { createAuditLog } from "./auditLog.service.js";
 
 const { Destination } = db;
 
@@ -14,7 +15,7 @@ export const createDestinationService = async ({
   latitude,
   province_code,
   ward_code,
-}) => {
+}, adminId, auditInfo = {}) => {
   try {
     if (
       longitude > 180 ||
@@ -33,6 +34,17 @@ export const createDestinationService = async ({
         type: "Point",
         coordinates: [longitude, latitude],
       },
+    });
+
+    // Log action
+    await createAuditLog({
+      userId: adminId,
+      action: "CREATE_DESTINATION",
+      entityType: "Destination",
+      entityId: destination.id,
+      newData: destination.toJSON(),
+      ipAddress: auditInfo.ipAddress,
+      userAgent: auditInfo.userAgent,
     });
 
     return destination;
@@ -94,7 +106,9 @@ export const searchDestinationsService = async ({
 
 export const updateDestinationService = async (
   destinationId,
-  { name, type, longitude, latitude, province_code, ward_code }
+  { name, type, longitude, latitude, province_code, ward_code },
+  adminId,
+  auditInfo = {}
 ) => {
   const t = await sequelize.transaction();
   try {
@@ -131,8 +145,20 @@ export const updateDestinationService = async (
       };
     }
 
+    const oldData = destination.toJSON();
     const updatedDestination = await destination.update(updateData, {
       transaction: t,
+    });
+
+    await createAuditLog({
+      userId: adminId,
+      action: "UPDATE_DESTINATION",
+      entityType: "Destination",
+      entityId: destinationId,
+      oldData,
+      newData: updatedDestination.toJSON(),
+      ipAddress: auditInfo.ipAddress,
+      userAgent: auditInfo.userAgent,
     });
 
     await t.commit();
@@ -148,7 +174,7 @@ export const updateDestinationService = async (
   }
 };
 
-export const deleteDestinationService = async (destinationId) => {
+export const deleteDestinationService = async (destinationId, adminId, auditInfo = {}) => {
   const t = await sequelize.transaction();
   try {
     const destination = await Destination.findByPk(destinationId, {
@@ -159,7 +185,19 @@ export const deleteDestinationService = async (destinationId) => {
       throw new NotFoundError("Địa danh không tồn tại");
     }
 
+    const oldData = destination.toJSON();
     await destination.destroy({ transaction: t });
+
+    await createAuditLog({
+      userId: adminId,
+      action: "DELETE_DESTINATION",
+      entityType: "Destination",
+      entityId: destinationId,
+      oldData,
+      ipAddress: auditInfo.ipAddress,
+      userAgent: auditInfo.userAgent,
+    });
+
     await t.commit();
   } catch (error) {
     if (t) await t.rollback();

@@ -11,6 +11,7 @@ import BusinessError from "../errors/BusinessError.js";
 import AuthorizationError from "../errors/AuthorizationError.js";
 import { getRedis } from "../config/redis.js";
 import RedisError from "../errors/RedisError.js";
+import { createAuditLog } from "./auditLog.service.js";
 
 const {
   ListingType,
@@ -781,7 +782,8 @@ export const createListingService = async (
   images = [],
   coverImageIndex = 0,
   status = "PENDING",
-  parentListingId = null
+  parentListingId = null,
+  auditInfo = {}
 ) => {
   if (status !== "DRAFT" && (!images || images.length === 0)) {
     throw new ValidationError("Phải có ít nhất 1 ảnh", [
@@ -986,6 +988,18 @@ export const createListingService = async (
     }
 
     await t.commit();
+
+    // Log action
+    await createAuditLog({
+      userId,
+      action: parentListingId ? "CREATE_EDIT_DRAFT" : "CREATE_LISTING",
+      entityType: "Listing",
+      entityId: listing.id,
+      newData: listing.toJSON(),
+      ipAddress: auditInfo.ipAddress,
+      userAgent: auditInfo.userAgent,
+    });
+
     return listing;
   } catch (error) {
     await t.rollback();
@@ -1026,7 +1040,8 @@ export const updateListingService = async (
   updateData,
   images = [],
   coverImageIndex = 0,
-  isAdmin = false
+  isAdmin = false,
+  auditInfo = {}
 ) => {
   if (images && images.length > 20) {
     throw new ValidationError("Tối đa 20 ảnh", [
@@ -1285,9 +1300,25 @@ export const updateListingService = async (
       await Promise.all(uploadPromises);
     }
 
+    const oldData = listing.previous();
+    const newData = listing.toJSON();
+
     await t.commit();
     await clearListingSearchCache();
     await clearPublishedListingDetailCache(listingId);
+
+    // Log action
+    await createAuditLog({
+      userId,
+      action: "UPDATE_LISTING",
+      entityType: "Listing",
+      entityId: listing.id,
+      oldData,
+      newData,
+      ipAddress: auditInfo.ipAddress,
+      userAgent: auditInfo.userAgent,
+    });
+
     return listing;
   } catch (error) {
     await t.rollback();
@@ -1320,7 +1351,7 @@ export const updateListingService = async (
   }
 };
 
-export const submitDraftListingService = async (listingId, images) => {
+export const submitDraftListingService = async (listingId, auditInfo = {}) => {
   try {
     const draftListing = await getListingByIdService(listingId);
     if (!images || images.length === 0) {
@@ -1341,6 +1372,18 @@ export const submitDraftListingService = async (listingId, images) => {
       }
     );
 
+    // Log action
+    await createAuditLog({
+      userId: draftListing.owner_id,
+      action: "SUBMIT_LISTING",
+      entityType: "Listing",
+      entityId: listingId,
+      oldData: { status: "DRAFT" },
+      newData: { status: "PENDING" },
+      ipAddress: auditInfo.ipAddress,
+      userAgent: auditInfo.userAgent,
+    });
+
     return draftListing;
   } catch (error) {
     if (
@@ -1359,7 +1402,7 @@ export const submitDraftListingService = async (listingId, images) => {
   }
 };
 
-export const hideListingService = async (listingId, userId) => {
+export const hideListingService = async (listingId, userId, auditInfo = {}) => {
   const listing = await Listing.findOne({
     where: { id: listingId, owner_id: userId },
   });
@@ -1370,10 +1413,23 @@ export const hideListingService = async (listingId, userId) => {
   await listing.update({ status: "HIDDEN" });
   await clearListingSearchCache();
   await clearPublishedListingDetailCache(listingId);
+
+  // Log action
+  await createAuditLog({
+    userId,
+    action: "HIDE_LISTING",
+    entityType: "Listing",
+    entityId: listingId,
+    oldData: { status: "PUBLISHED" },
+    newData: { status: "HIDDEN" },
+    ipAddress: auditInfo.ipAddress,
+    userAgent: auditInfo.userAgent,
+  });
+
   return listing;
 };
 
-export const showListingService = async (listingId, userId) => {
+export const showListingService = async (listingId, userId, auditInfo = {}) => {
   const listing = await Listing.findOne({
     where: { id: listingId, owner_id: userId },
   });
@@ -1384,10 +1440,23 @@ export const showListingService = async (listingId, userId) => {
   await listing.update({ status: "PUBLISHED" });
   await clearListingSearchCache();
   await clearPublishedListingDetailCache(listingId);
+
+  // Log action
+  await createAuditLog({
+    userId,
+    action: "SHOW_LISTING",
+    entityType: "Listing",
+    entityId: listingId,
+    oldData: { status: "HIDDEN" },
+    newData: { status: "PUBLISHED" },
+    ipAddress: auditInfo.ipAddress,
+    userAgent: auditInfo.userAgent,
+  });
+
   return listing;
 };
 
-export const renewListingService = async (listingId, userId) => {
+export const renewListingService = async (listingId, userId, auditInfo = {}) => {
   const listing = await Listing.findOne({
     where: { id: listingId, owner_id: userId },
   });
@@ -1395,6 +1464,7 @@ export const renewListingService = async (listingId, userId) => {
   if (listing.status !== "EXPIRED")
     throw new BusinessError("Chỉ có thể làm mới bài đăng đã hết hạn.");
 
+  const oldStatus = listing.status;
   await listing.update({
     status: "PUBLISHED",
     published_at: sequelize.fn("NOW"),
@@ -1402,6 +1472,19 @@ export const renewListingService = async (listingId, userId) => {
   });
   await clearListingSearchCache();
   await clearPublishedListingDetailCache(listingId);
+
+  // Log action
+  await createAuditLog({
+    userId,
+    action: "RENEW_LISTING",
+    entityType: "Listing",
+    entityId: listingId,
+    oldData: { status: oldStatus },
+    newData: { status: "PUBLISHED" },
+    ipAddress: auditInfo.ipAddress,
+    userAgent: auditInfo.userAgent,
+  });
+
   return listing;
 };
 
@@ -1600,7 +1683,7 @@ export const getAllModatedListingsService = async (
 };
 
 // Admin duyệt bài mới của landlord (PENDING -> PUBLISHED)
-export const approveListingService = async (listingId) => {
+export const approveListingService = async (listingId, adminId, auditInfo = {}) => {
   const listing = await Listing.findByPk(listingId);
   if (!listing) throw new NotFoundError("Bài đăng không tồn tại.");
   if (listing.status !== "PENDING")
@@ -1614,11 +1697,24 @@ export const approveListingService = async (listingId) => {
 
   await clearListingSearchCache();
   await clearPublishedListingDetailCache(listingId);
+
+  // Log action (Note: In a real app, you'd pass adminId here)
+  await createAuditLog({
+    userId: adminId,
+    action: "APPROVE_LISTING",
+    entityType: "Listing",
+    entityId: listingId,
+    oldData: { status: "PENDING" },
+    newData: { status: "PUBLISHED" },
+    ipAddress: auditInfo.ipAddress,
+    userAgent: auditInfo.userAgent,
+  });
+
   return listing;
 };
 
 // Admin xác nhận duyệt thay đổi bài viết từ Edit Draft
-export const approveEditDraftListingService = async (listingId) => {
+export const approveEditDraftListingService = async (listingId, adminId, auditInfo = {}) => {
   const t = await sequelize.transaction();
   try {
     // 1. Lấy thông tin bản nháp chỉnh sửa (EditDraft)
@@ -1756,6 +1852,19 @@ export const approveEditDraftListingService = async (listingId) => {
     await t.commit();
     await clearListingSearchCache();
     await clearPublishedListingDetailCache(parentListing.id);
+
+    // Log action
+    await createAuditLog({
+      userId: adminId,
+      action: "APPROVE_EDIT_DRAFT",
+      entityType: "Listing",
+      entityId: parentListing.id,
+      oldData: { status: "HIDDEN_FROM_USER" },
+      newData: parentListing.toJSON(),
+      ipAddress: auditInfo.ipAddress,
+      userAgent: auditInfo.userAgent,
+    });
+
     return parentListing;
   } catch (error) {
     if (t) await t.rollback();
@@ -1784,7 +1893,7 @@ export const approveEditDraftListingService = async (listingId) => {
 };
 
 // Admin xóa hoàn toàn bài đăng khỏi hệ thống
-export const hardDeleteListingService = async (listingId) => {
+export const hardDeleteListingService = async (listingId, adminId, auditInfo = {}) => {
   const t = await sequelize.transaction();
   try {
     const listing = await Listing.findByPk(listingId, {
@@ -1821,6 +1930,17 @@ export const hardDeleteListingService = async (listingId) => {
     await clearListingSearchCache();
     await clearPublishedListingDetailCache(listingId);
 
+    // Log action
+    await createAuditLog({
+      userId: adminId,
+      action: "HARD_DELETE_LISTING",
+      entityType: "Listing",
+      entityId: listingId,
+      oldData: listing.toJSON(),
+      ipAddress: auditInfo.ipAddress,
+      userAgent: auditInfo.userAgent,
+    });
+
     return true;
   } catch (error) {
     if (t) await t.rollback();
@@ -1829,18 +1949,31 @@ export const hardDeleteListingService = async (listingId) => {
 };
 
 // Admin từ chối bài mới của landlord (PENDING -> REJECTED)
-export const rejectListingService = async (listingId, reason) => {
+export const rejectListingService = async (listingId, reason, adminId, auditInfo = {}) => {
   const listing = await Listing.findByPk(listingId);
   if (!listing) throw new NotFoundError("Bài đăng không tồn tại.");
   if (listing.status !== "PENDING")
     throw new BusinessError("Chỉ có thể từ chối bài đăng đang chờ duyệt.");
 
   await listing.update({ status: "REJECTED" });
+
+  // Log action
+  await createAuditLog({
+    userId: adminId,
+    action: "REJECT_LISTING",
+    entityType: "Listing",
+    entityId: listingId,
+    oldData: { status: "PENDING" },
+    newData: { status: "REJECTED", reason },
+    ipAddress: auditInfo.ipAddress,
+    userAgent: auditInfo.userAgent,
+  });
+
   return listing;
 };
 
 // Admin từ chối bản chỉnh sửa (Xóa EDIT_DRAFT, khôi phục Parent sang PUBLISHED)
-export const rejectEditDraftListingService = async (listingId, reason) => {
+export const rejectEditDraftListingService = async (listingId, reason, adminId, auditInfo = {}) => {
   const t = await sequelize.transaction();
   try {
     const listing = await Listing.findByPk(listingId, {
@@ -1894,6 +2027,19 @@ export const rejectEditDraftListingService = async (listingId, reason) => {
     await t.commit();
     await clearListingSearchCache();
     await clearPublishedListingDetailCache(parentListing.id);
+
+    // Log action
+    await createAuditLog({
+      userId: adminId,
+      action: "REJECT_EDIT_DRAFT",
+      entityType: "Listing",
+      entityId: listingId,
+      oldData: { status: "EDIT_DRAFT" },
+      newData: { status: "REJECTED", reason },
+      ipAddress: auditInfo.ipAddress,
+      userAgent: auditInfo.userAgent,
+    });
+
     return true;
   } catch (error) {
     if (t) await t.rollback();
@@ -1918,7 +2064,7 @@ export const rejectEditDraftListingService = async (listingId, reason) => {
 };
 
 // Landlord xóa bài viết (DELETED) nhưng vẫn lưu trong CSDL
-export const softDeleteListingService = async (listingId, userId) => {
+export const softDeleteListingService = async (listingId, userId, auditInfo = {}) => {
   const t = await sequelize.transaction();
   try {
     const listing = await Listing.findByPk(listingId, {
@@ -1949,6 +2095,19 @@ export const softDeleteListingService = async (listingId, userId) => {
     await t.commit();
     await clearListingSearchCache();
     await clearPublishedListingDetailCache(listingId);
+
+    // Log action
+    await createAuditLog({
+      userId,
+      action: "SOFT_DELETE_LISTING",
+      entityType: "Listing",
+      entityId: listingId,
+      oldData: { status: listing.status },
+      newData: { status: "SOFT_DELETED" },
+      ipAddress: auditInfo.ipAddress,
+      userAgent: auditInfo.userAgent,
+    });
+
     return true;
   } catch (error) {
     await t.rollback();

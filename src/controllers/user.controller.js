@@ -81,7 +81,10 @@ export const updateProfile = async (req, res, next) => {
     const payload = verifyAcessToken(token);
     const userId = payload.sub;
 
-    const { EM, EC } = await updateUserProfile(userId, req.body, req.file);
+    const { EM, EC } = await updateUserProfile(userId, req.body, req.file, {
+      ipAddress: req.ip,
+      userAgent: req.get("user-agent"),
+    });
 
     return res.status(200).json({
       message: EM,

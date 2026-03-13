@@ -53,7 +53,10 @@ export const create = async (req, res, next) => {
     const { content, parent_id } = req.body;
     const userId = req.user.id;
 
-    const result = await createComment(listingId, userId, content, parent_id);
+    const result = await createComment(listingId, userId, content, parent_id, {
+      ipAddress: req.ip,
+      userAgent: req.get("user-agent"),
+    });
     res.status(201).json({
       success: true,
       data: result,
@@ -69,7 +72,10 @@ export const update = async (req, res, next) => {
     const { content } = req.body;
     const userId = req.user.id;
 
-    const result = await updateComment(commentId, userId, content);
+    const result = await updateComment(commentId, userId, content, {
+      ipAddress: req.ip,
+      userAgent: req.get("user-agent"),
+    });
     res.status(200).json({
       success: true,
       data: result,
@@ -84,7 +90,10 @@ export const destroy = async (req, res, next) => {
     const { id: commentId } = req.params;
     const userId = req.user.id;
 
-    await deleteComment(commentId, userId);
+    await deleteComment(commentId, userId, {
+      ipAddress: req.ip,
+      userAgent: req.get("user-agent"),
+    });
     res.status(200).json({
       success: true,
       message: "Bình luận đã được xóa.",

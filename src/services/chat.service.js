@@ -4,6 +4,7 @@ import BusinessError from "../errors/BusinessError.js";
 import db from "../models/index.js";
 const { Chat, Message, User, Role } = db;
 import { Op } from "sequelize";
+import { createAuditLog } from "./auditLog.service.js";
 
 export const findOrCreateChat = async (userId, targetId) => {
   // Check if chat exists between the two users
@@ -127,7 +128,7 @@ export const markMessageAsRead = async (messageId, userId) => {
   return message;
 };
 
-export const deleteChat = async (chatId, userId) => {
+export const deleteChat = async (chatId, userId, auditInfo = {}) => {
   const chat = await Chat.findOne({
     where: {
       id: chatId,
@@ -142,6 +143,18 @@ export const deleteChat = async (chatId, userId) => {
   }
 
   await chat.destroy();
+
+  // Log action
+  await createAuditLog({
+    userId,
+    action: "DELETE_CHAT",
+    entityType: "Chat",
+    entityId: chatId,
+    oldData: chat.toJSON(),
+    ipAddress: auditInfo.ipAddress,
+    userAgent: auditInfo.userAgent,
+  });
+
   return true;
 };
 
@@ -153,7 +166,7 @@ export const getChatParticipantIds = async (chatId) => {
   return [chat.owner_id, chat.tenant_id];
 };
 
-export const updateMessage = async (messageId, userId, content) => {
+export const updateMessage = async (messageId, userId, content, auditInfo = {}) => {
   const message = await Message.findByPk(messageId);
 
   if (!message) throw new NotFoundError("Tin nhắn không tồn tại");
@@ -175,12 +188,26 @@ export const updateMessage = async (messageId, userId, content) => {
     );
   }
 
-  message.content = content;
-  await message.save();
-  return message;
+    const oldData = message.previous();
+    message.content = content;
+    await message.save();
+
+    // Log action
+    await createAuditLog({
+      userId,
+      action: "UPDATE_MESSAGE",
+      entityType: "Message",
+      entityId: messageId,
+      oldData,
+      newData: message.toJSON(),
+      ipAddress: auditInfo.ipAddress,
+      userAgent: auditInfo.userAgent,
+    });
+
+    return message;
 };
 
-export const deleteMessage = async (messageId, userId) => {
+export const deleteMessage = async (messageId, userId, auditInfo = {}) => {
   const message = await Message.findByPk(messageId);
 
   if (!message) throw new NotFoundError("Tin nhắn không tồn tại");
@@ -192,5 +219,17 @@ export const deleteMessage = async (messageId, userId) => {
 
   const chatId = message.chat_id;
   await message.destroy();
+
+  // Log action
+  await createAuditLog({
+    userId,
+    action: "DELETE_MESSAGE",
+    entityType: "Message",
+    entityId: messageId,
+    oldData: message.toJSON(),
+    ipAddress: auditInfo.ipAddress,
+    userAgent: auditInfo.userAgent,
+  });
+
   return chatId;
 };

@@ -34,7 +34,10 @@ export const getAmenityById = async (req, res, next) => {
 
 export const createAmenity = async (req, res, next) => {
   try {
-    const amenity = await createAmenityService(req.body);
+    const amenity = await createAmenityService(req.body, req.user.id, {
+      ipAddress: req.ip,
+      userAgent: req.get("user-agent"),
+    });
     return res.status(201).json({
       success: true,
       message: "Tạo tiện ích thành công",
@@ -48,7 +51,10 @@ export const createAmenity = async (req, res, next) => {
 export const updateAmenity = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const amenity = await updateAmenityService(id, req.body);
+    const amenity = await updateAmenityService(id, req.body, req.user.id, {
+      ipAddress: req.ip,
+      userAgent: req.get("user-agent"),
+    });
     return res.status(200).json({
       success: true,
       message: "Cập nhật tiện ích thành công",
@@ -62,7 +68,10 @@ export const updateAmenity = async (req, res, next) => {
 export const deleteAmenity = async (req, res, next) => {
   try {
     const { id } = req.params;
-    await deleteAmenityService(id);
+    await deleteAmenityService(id, req.user.id, {
+      ipAddress: req.ip,
+      userAgent: req.get("user-agent"),
+    });
     return res.status(200).json({
       success: true,
       message: "Xóa tiện ích thành công",

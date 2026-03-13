@@ -34,7 +34,10 @@ export const getRoleById = async (req, res, next) => {
 
 export const createRole = async (req, res, next) => {
   try {
-    const role = await createRoleService(req.body);
+    const role = await createRoleService(req.body, req.user.id, {
+      ipAddress: req.ip,
+      userAgent: req.get("user-agent"),
+    });
     return res.status(201).json({
       success: true,
       message: "Tạo quyền hạn thành công",
@@ -48,7 +51,10 @@ export const createRole = async (req, res, next) => {
 export const updateRole = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const role = await updateRoleService(id, req.body);
+    const role = await updateRoleService(id, req.body, req.user.id, {
+      ipAddress: req.ip,
+      userAgent: req.get("user-agent"),
+    });
     return res.status(200).json({
       success: true,
       message: "Cập nhật quyền hạn thành công",
@@ -62,7 +68,10 @@ export const updateRole = async (req, res, next) => {
 export const deleteRole = async (req, res, next) => {
   try {
     const { id } = req.params;
-    await deleteRoleService(id);
+    await deleteRoleService(id, req.user.id, {
+      ipAddress: req.ip,
+      userAgent: req.get("user-agent"),
+    });
     return res.status(200).json({
       success: true,
       message: "Xóa quyền hạn thành công",

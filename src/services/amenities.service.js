@@ -1,6 +1,8 @@
 import BusinessError from "../errors/BusinessError.js";
 import db from "../models/index.js";
 import { getRedis } from "../config/redis.js";
+import { createAuditLog } from "./auditLog.service.js";
+import NotFoundError from "../errors/NotFoundError.js";
 
 const { Amenity, ListingAmenity } = db;
 
@@ -54,24 +56,51 @@ export const getAmenityByIdService = async (id) => {
   return amenity;
 };
 
-export const createAmenityService = async (data) => {
+export const createAmenityService = async (data, adminId, auditInfo = {}) => {
   const amenity = await Amenity.create(data);
   await clearAmenitiesCache();
+
+  // Log action
+  await createAuditLog({
+    userId: adminId,
+    action: "CREATE_AMENITY",
+    entityType: "Amenity",
+    entityId: amenity.id,
+    newData: amenity.toJSON(),
+    ipAddress: auditInfo.ipAddress,
+    userAgent: auditInfo.userAgent,
+  });
+
   return amenity;
 };
 
-export const updateAmenityService = async (id, data) => {
+export const updateAmenityService = async (id, data, adminId, auditInfo = {}) => {
   const amenity = await Amenity.findByPk(id);
   if (!amenity) {
     throw new NotFoundError("Không tìm thấy tiện ích để cập nhật.");
   }
 
+  const oldData = amenity.toJSON();
   await amenity.update(data);
+  const newData = amenity.toJSON();
   await clearAmenitiesCache();
+
+  // Log action
+  await createAuditLog({
+    userId: adminId,
+    action: "UPDATE_AMENITY",
+    entityType: "Amenity",
+    entityId: id,
+    oldData,
+    newData,
+    ipAddress: auditInfo.ipAddress,
+    userAgent: auditInfo.userAgent,
+  });
+
   return amenity;
 };
 
-export const deleteAmenityService = async (id) => {
+export const deleteAmenityService = async (id, adminId, auditInfo = {}) => {
   const amenity = await Amenity.findByPk(id);
   if (!amenity) {
     throw new NotFoundError("Không tìm thấy tiện ích để xóa.");
@@ -88,8 +117,21 @@ export const deleteAmenityService = async (id) => {
     );
   }
 
+  const oldData = amenity.toJSON();
   await amenity.destroy();
   await clearAmenitiesCache();
+
+  // Log action
+  await createAuditLog({
+    userId: adminId,
+    action: "DELETE_AMENITY",
+    entityType: "Amenity",
+    entityId: id,
+    oldData,
+    ipAddress: auditInfo.ipAddress,
+    userAgent: auditInfo.userAgent,
+  });
+
   return true;
 };
 

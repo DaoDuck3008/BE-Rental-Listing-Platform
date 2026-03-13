@@ -156,7 +156,10 @@ export const destroy = async (req, res, next) => {
     const participantIds = await getChatParticipantIds(chatId);
     const otherParticipantId = participantIds.find(id => id !== userId);
 
-    await deleteChat(chatId, userId);
+    await deleteChat(chatId, userId, {
+      ipAddress: req.ip,
+      userAgent: req.get("user-agent"),
+    });
 
     // --- SOCKET LOGIC ---
     // Thông báo cho người còn lại rằng cuộc trò chuyện đã bị xóa
@@ -180,7 +183,10 @@ export const updateMsg = async (req, res, next) => {
     const userId = req.user.id;
     const { content } = req.body;
 
-    const message = await updateMessage(messageId, userId, content);
+    const message = await updateMessage(messageId, userId, content, {
+      ipAddress: req.ip,
+      userAgent: req.get("user-agent"),
+    });
 
     // Socket: Gửi thông báo cập nhật cho tất cả participant trong chat
     const participantIds = await getChatParticipantIds(message.chat_id);
@@ -202,7 +208,10 @@ export const deleteMsg = async (req, res, next) => {
     const { id: messageId } = req.params;
     const userId = req.user.id;
 
-    const chatId = await deleteMessage(messageId, userId);
+    const chatId = await deleteMessage(messageId, userId, {
+      ipAddress: req.ip,
+      userAgent: req.get("user-agent"),
+    });
 
     // Socket: Gửi thông báo xóa cho tất cả participant trong chat
     const participantIds = await getChatParticipantIds(chatId);

@@ -15,7 +15,10 @@ const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 export const register = async (req, res, next) => {
   try {
-    const user = await registgerService(req.body);
+    const user = await registgerService(req.body, {
+      ipAddress: req.ip,
+      userAgent: req.get("user-agent"),
+    });
 
     return res.status(201).json({
       message: "Register successful",
@@ -28,7 +31,10 @@ export const register = async (req, res, next) => {
 
 export const login = async (req, res, next) => {
   try {
-    const { user, access_token, refreshToken } = await loginService(req.body);
+    const { user, access_token, refreshToken } = await loginService(req.body, {
+      ipAddress: req.ip,
+      userAgent: req.get("user-agent"),
+    });
 
     // Nếu như client gửi về thông tin lưu đăng nhập thì set cookie sống trong 7 ngày
     const maxAge =
@@ -70,7 +76,10 @@ export const googleLogin = async (req, res, next) => {
     const payload = ticket.getPayload();
 
     // 2. Tìm hoặc tạo mới tài khoản người dùng với payload google
-    const user = await getOrCreateUserByGoogle(payload);
+    const user = await getOrCreateUserByGoogle(payload, {
+      ipAddress: req.ip,
+      userAgent: req.get("user-agent"),
+    });
 
     // 3. Tạo access token và refresh token
     const access_token = signAccessToken({

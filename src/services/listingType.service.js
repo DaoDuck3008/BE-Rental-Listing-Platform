@@ -3,6 +3,7 @@ import { getRedis } from "../config/redis.js";
 import NotFoundError from "../errors/NotFoundError.js";
 import RedisError from "../errors/RedisError.js";
 import BusinessError from "../errors/BusinessError.js";
+import { createAuditLog } from "./auditLog.service.js";
 
 const { ListingType, Listing } = db;
 
@@ -56,24 +57,51 @@ export const getListingTypeByIdService = async (id) => {
   return listingType;
 };
 
-export const createListingTypeService = async (data) => {
+export const createListingTypeService = async (data, adminId, auditInfo = {}) => {
   const listingType = await ListingType.create(data);
   await clearListingTypesCache();
+
+  // Log action
+  await createAuditLog({
+    userId: adminId,
+    action: "CREATE_LISTING_TYPE",
+    entityType: "ListingType",
+    entityId: listingType.id,
+    newData: listingType.toJSON(),
+    ipAddress: auditInfo.ipAddress,
+    userAgent: auditInfo.userAgent,
+  });
+
   return listingType;
 };
 
-export const updateListingTypeService = async (id, data) => {
+export const updateListingTypeService = async (id, data, adminId, auditInfo = {}) => {
   const listingType = await ListingType.findByPk(id);
   if (!listingType) {
     throw new NotFoundError("Không tìm thấy loại bài đăng để cập nhật.");
   }
 
+  const oldData = listingType.toJSON();
   await listingType.update(data);
+  const newData = listingType.toJSON();
   await clearListingTypesCache();
+
+  // Log action
+  await createAuditLog({
+    userId: adminId,
+    action: "UPDATE_LISTING_TYPE",
+    entityType: "ListingType",
+    entityId: id,
+    oldData,
+    newData,
+    ipAddress: auditInfo.ipAddress,
+    userAgent: auditInfo.userAgent,
+  });
+
   return listingType;
 };
 
-export const deleteListingTypeService = async (id) => {
+export const deleteListingTypeService = async (id, adminId, auditInfo = {}) => {
   const listingType = await ListingType.findByPk(id);
   if (!listingType) {
     throw new NotFoundError("Không tìm thấy loại bài đăng để xóa.");
@@ -91,8 +119,21 @@ export const deleteListingTypeService = async (id) => {
     );
   }
 
+  const oldData = listingType.toJSON();
   await listingType.destroy();
   await clearListingTypesCache();
+
+  // Log action
+  await createAuditLog({
+    userId: adminId,
+    action: "DELETE_LISTING_TYPE",
+    entityType: "ListingType",
+    entityId: id,
+    oldData,
+    ipAddress: auditInfo.ipAddress,
+    userAgent: auditInfo.userAgent,
+  });
+
   return true;
 };
 

@@ -11,6 +11,48 @@ import {
   updateListingService,
 } from "../services/listing.service.js";
 import { createNotification } from "../services/notification.service.js";
+import { getAuditLogs, getAuditLogById } from "../services/auditLog.service.js";
+
+export const getAuditLogsForAdmin = async (req, res, next) => {
+  try {
+    const { page, limit, userId, action, entityType } = req.query;
+    
+    const result = await getAuditLogs({
+      page: parseInt(page) || 1,
+      limit: parseInt(limit) || 50,
+      userId,
+      action,
+      entityType,
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: result.rows,
+      pagination: {
+        page: parseInt(page) || 1,
+        limit: parseInt(limit) || 50,
+        totalItems: result.count,
+        totalPages: Math.ceil(result.count / (parseInt(limit) || 50)),
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getAuditLogByIdForAdmin = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const result = await getAuditLogById(id);
+
+    return res.status(200).json({
+      success: true,
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
 
 export const getListingStatsForAdmin = async (req, res, next) => {
   try {

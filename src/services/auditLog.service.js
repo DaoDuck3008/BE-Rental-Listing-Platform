@@ -68,3 +68,22 @@ export const getEntityAuditLogs = async ({ entityType, entityId }) => {
     order: [["created_at", "DESC"]],
   });
 };
+
+export const getAuditLogById = async (id) => {
+  const log = await AuditLog.findByPk(id, {
+    include: [
+      {
+        model: db.User,
+        as: "user",
+        attributes: ["id", "full_name", "email", "avatar"],
+      },
+    ],
+  });
+
+  if (!log) {
+    const NotFoundError = (await import("../errors/NotFoundError.js")).default;
+    throw new NotFoundError("Không tìm thấy tùy chọn audit log này");
+  }
+
+  return log;
+};

@@ -834,8 +834,9 @@ export const createListingService = async (
     }
 
     // Nếu như la tạo EDIT-DRAFT thì đổi status của parent listing sang HIDDEN_FROM_USER
+    let parentListing = null;
     if (parentListingId) {
-      const parentListing = await Listing.findByPk(parentListingId, {
+      parentListing = await Listing.findByPk(parentListingId, {
         transaction: t,
         lock: t.LOCK.UPDATE,
       });
@@ -995,6 +996,7 @@ export const createListingService = async (
       action: parentListingId ? "CREATE_EDIT_DRAFT" : "CREATE_LISTING",
       entityType: "Listing",
       entityId: listing.id,
+      oldData: parentListing ? parentListing.toJSON() : null,
       newData: listing.toJSON(),
       ipAddress: auditInfo.ipAddress,
       userAgent: auditInfo.userAgent,
@@ -1456,7 +1458,11 @@ export const showListingService = async (listingId, userId, auditInfo = {}) => {
   return listing;
 };
 
-export const renewListingService = async (listingId, userId, auditInfo = {}) => {
+export const renewListingService = async (
+  listingId,
+  userId,
+  auditInfo = {}
+) => {
   const listing = await Listing.findOne({
     where: { id: listingId, owner_id: userId },
   });
@@ -1683,7 +1689,11 @@ export const getAllModatedListingsService = async (
 };
 
 // Admin duyệt bài mới của landlord (PENDING -> PUBLISHED)
-export const approveListingService = async (listingId, adminId, auditInfo = {}) => {
+export const approveListingService = async (
+  listingId,
+  adminId,
+  auditInfo = {}
+) => {
   const listing = await Listing.findByPk(listingId);
   if (!listing) throw new NotFoundError("Bài đăng không tồn tại.");
   if (listing.status !== "PENDING")
@@ -1698,7 +1708,6 @@ export const approveListingService = async (listingId, adminId, auditInfo = {}) 
   await clearListingSearchCache();
   await clearPublishedListingDetailCache(listingId);
 
-  // Log action (Note: In a real app, you'd pass adminId here)
   await createAuditLog({
     userId: adminId,
     action: "APPROVE_LISTING",
@@ -1714,7 +1723,11 @@ export const approveListingService = async (listingId, adminId, auditInfo = {}) 
 };
 
 // Admin xác nhận duyệt thay đổi bài viết từ Edit Draft
-export const approveEditDraftListingService = async (listingId, adminId, auditInfo = {}) => {
+export const approveEditDraftListingService = async (
+  listingId,
+  adminId,
+  auditInfo = {}
+) => {
   const t = await sequelize.transaction();
   try {
     // 1. Lấy thông tin bản nháp chỉnh sửa (EditDraft)
@@ -1859,7 +1872,7 @@ export const approveEditDraftListingService = async (listingId, adminId, auditIn
       action: "APPROVE_EDIT_DRAFT",
       entityType: "Listing",
       entityId: parentListing.id,
-      oldData: { status: "HIDDEN_FROM_USER" },
+      oldData: editDraftListing.toJSON(),
       newData: parentListing.toJSON(),
       ipAddress: auditInfo.ipAddress,
       userAgent: auditInfo.userAgent,
@@ -1893,7 +1906,11 @@ export const approveEditDraftListingService = async (listingId, adminId, auditIn
 };
 
 // Admin xóa hoàn toàn bài đăng khỏi hệ thống
-export const hardDeleteListingService = async (listingId, adminId, auditInfo = {}) => {
+export const hardDeleteListingService = async (
+  listingId,
+  adminId,
+  auditInfo = {}
+) => {
   const t = await sequelize.transaction();
   try {
     const listing = await Listing.findByPk(listingId, {
@@ -1949,7 +1966,12 @@ export const hardDeleteListingService = async (listingId, adminId, auditInfo = {
 };
 
 // Admin từ chối bài mới của landlord (PENDING -> REJECTED)
-export const rejectListingService = async (listingId, reason, adminId, auditInfo = {}) => {
+export const rejectListingService = async (
+  listingId,
+  reason,
+  adminId,
+  auditInfo = {}
+) => {
   const listing = await Listing.findByPk(listingId);
   if (!listing) throw new NotFoundError("Bài đăng không tồn tại.");
   if (listing.status !== "PENDING")
@@ -1973,7 +1995,12 @@ export const rejectListingService = async (listingId, reason, adminId, auditInfo
 };
 
 // Admin từ chối bản chỉnh sửa (Xóa EDIT_DRAFT, khôi phục Parent sang PUBLISHED)
-export const rejectEditDraftListingService = async (listingId, reason, adminId, auditInfo = {}) => {
+export const rejectEditDraftListingService = async (
+  listingId,
+  reason,
+  adminId,
+  auditInfo = {}
+) => {
   const t = await sequelize.transaction();
   try {
     const listing = await Listing.findByPk(listingId, {
@@ -2064,7 +2091,11 @@ export const rejectEditDraftListingService = async (listingId, reason, adminId, 
 };
 
 // Landlord xóa bài viết (DELETED) nhưng vẫn lưu trong CSDL
-export const softDeleteListingService = async (listingId, userId, auditInfo = {}) => {
+export const softDeleteListingService = async (
+  listingId,
+  userId,
+  auditInfo = {}
+) => {
   const t = await sequelize.transaction();
   try {
     const listing = await Listing.findByPk(listingId, {

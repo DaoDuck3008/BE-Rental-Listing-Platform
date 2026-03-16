@@ -14,6 +14,13 @@ import {
   getAuditLogByIdForAdmin,
 } from "../controllers/admin.controller.js";
 
+import {
+  getOverviewStatsForAdmin,
+  getGrowthChartsForAdmin,
+  getListingPieChartForAdmin,
+  getRecentListsForAdmin,
+} from "../controllers/dashboard.controller.js";
+
 import { protect, requireRole } from "../middlewares/auth.middleware.js";
 import { upload } from "../middlewares/upload.middleware.js";
 
@@ -21,6 +28,11 @@ const router = express.Router();
 
 router.use(protect);
 router.use(requireRole(["ADMIN"]));
+
+router.get("/dashboard/overview", getOverviewStatsForAdmin);
+router.get("/dashboard/charts", getGrowthChartsForAdmin);
+router.get("/dashboard/pie-chart", getListingPieChartForAdmin);
+router.get("/dashboard/recent", getRecentListsForAdmin);
 
 router.get("/listings/stats", getListingStatsForAdmin);
 router.get("/listings", getAllListingsForAdmin);

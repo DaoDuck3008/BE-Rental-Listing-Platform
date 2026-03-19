@@ -9,14 +9,14 @@ const userSockets = new Map();
 
 export const initSocket = (server) => {
   io = new Server(server, {
-    path: "/socket.io", 
+    path: "/socket.io",
     cors: {
-      origin: process.env.FRONTEND_URL_1 || "http://127.0.0.1:3000",
+      origin: process.env.FRONTEND_URL || "http://127.0.0.1:3000",
       methods: ["GET", "POST"],
       credentials: true,
     },
     allowEIO3: true,
-    transports: ['polling', 'websocket']
+    transports: ["polling", "websocket"],
   });
 
   // Authentication middleware
@@ -39,7 +39,9 @@ export const initSocket = (server) => {
   });
 
   io.on("connection", (socket) => {
-    console.log(`>>> User connected: ${socket.userId} (SocketID: ${socket.id})`);
+    console.log(
+      `>>> User connected: ${socket.userId} (SocketID: ${socket.id})`
+    );
 
     userSockets.set(socket.userId, socket.id);
     socket.join(socket.userId); // Join private room based on userId

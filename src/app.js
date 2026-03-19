@@ -21,6 +21,7 @@ import chatRoutes from "./routes/chat.route.js";
 import notificationRoutes from "./routes/notification.route.js";
 
 import { initRedis } from "./config/redis.js";
+import { verifyMailConnection } from "./config/mail.js";
 import { startSyncListingViewsJob } from "./jobs/syncListingViews.job.js";
 
 dotenv.config();
@@ -30,7 +31,7 @@ const app = express();
 // MIDDLEWARE
 app.use(
   cors({
-    origin: [process.env.FRONTEND_URL_1], 
+    origin: [process.env.FRONTEND_URL],
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
@@ -47,14 +48,17 @@ app.use(express.urlencoded({ extended: true }));
 const connectDB = async () => {
   try {
     await sequelize.authenticate();
-    console.log(">>> Database connected");
+    console.log(">>> [Database] Kết nối thành công!");
   } catch (error) {
-    console.error(">>> Database connection failed: ", error);
+    console.error(">>> [Database] Kết nối thất bại: ", error);
   }
 };
+
 connectDB();
 // CONNECT REDIS
 initRedis();
+// VERIFY SMTP
+verifyMailConnection();
 
 // ROUTE
 app.use("/", defaultRoutes);
@@ -85,6 +89,7 @@ app.use((err, req, res, next) => {
     error: err.errorCode || "INTERNAL_SERVER_ERROR",
     message: err.message,
     errors: err.errors || undefined,
+    data: err.data || undefined,
   });
 });
 

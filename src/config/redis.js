@@ -13,11 +13,11 @@ export const initRedis = () => {
   });
 
   redis.on("connect", () => {
-    console.log(">>> Redis connected");
+    console.log(">>> [Redis] Kết nối thành công!");
   });
 
   redis.on("error", (error) => {
-    console.error(">>> Redis connection error: ", error);
+    console.error(">>> [Redis] Kết nối thất bại: ", error);
   });
 
   return redis;

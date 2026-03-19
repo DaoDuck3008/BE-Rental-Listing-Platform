@@ -156,7 +156,7 @@ export const toggleUserActiveForAdmin = async (req, res, next) => {
 
     return res.status(200).json({
       success: true,
-      message: result.is_active
+      message: result.is_locked
         ? "Kích hoạt người dùng thành công"
         : "Khóa người dùng thành công",
       data: result,

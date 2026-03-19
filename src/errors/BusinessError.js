@@ -3,9 +3,11 @@ import AppError from "./AppError.js";
 class BusinessError extends AppError {
   constructor(
     message = "Vi phạm nguyên tắc nghiệp vụ",
-    errorCode = "BUSINESS_RULE_VALIDATION"
+    errorCode = "BUSINESS_RULE_VALIDATION",
+    data = null
   ) {
     super(message, 422, errorCode);
+    this.data = data;
   }
 }
 

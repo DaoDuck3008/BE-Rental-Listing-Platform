@@ -5,6 +5,8 @@ import {
   refresh,
   logout,
   googleLogin,
+  verifyEmail,
+  resendVerifyEmail,
 } from "../controllers/auth.controller.js";
 import { upload } from "../middlewares/upload.middleware.js";
 import { protect } from "../middlewares/auth.middleware.js";
@@ -18,5 +20,7 @@ router.post("/login", upload.none(), login);
 router.post("/google", upload.none(), googleLogin);
 router.post("/refresh", upload.none(), refresh);
 router.post("/logout", protect, logout);
+router.post("/verify-email", upload.none(), verifyEmail);
+router.post("/resend-verify-email", upload.none(), resendVerifyEmail);
 
 export default router;

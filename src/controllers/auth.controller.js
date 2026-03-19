@@ -1,8 +1,10 @@
 import { OAuth2Client } from "google-auth-library";
 import {
-  registgerService,
+  registerService,
   loginService,
   getOrCreateUserByGoogle,
+  verifyEmailService,
+  resendVerifyEmailService,
 } from "../services/auth.service.js";
 import { getUserById } from "../services/user.service.js";
 import {
@@ -15,14 +17,70 @@ const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 export const register = async (req, res, next) => {
   try {
-    const user = await registgerService(req.body, {
+    const user = await registerService(req.body, {
       ipAddress: req.ip,
       userAgent: req.get("user-agent"),
     });
 
+    const message = process.env.VERIFY_EMAIL_TOGGLE === "true" 
+      ? "Đăng ký thành công. Vui lòng kiểm tra email để lấy mã xác thực."
+      : "Đăng ký thành công!";
+
     return res.status(201).json({
-      message: "Register successful",
+      message,
       success: true,
+      isVerifyRequired: process.env.VERIFY_EMAIL_TOGGLE === "true",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const verifyEmail = async (req, res, next) => {
+  try {
+    const { user, access_token, refreshToken } = await verifyEmailService(req.body, {
+      ipAddress: req.ip,
+      userAgent: req.get("user-agent"),
+    });
+
+    // Sau khi verify email thành công thì đăng nhập luôn
+    // Mặc định sống trong 7 ngày
+    const maxAge = 7 * 24 * 60 * 60 * 1000;
+
+    return res
+      .status(200)
+      .cookie("refresh_token", refreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+        expires: new Date(Date.now() + maxAge),
+      })
+      .json({
+        success: true,
+        message: "Email đã được xác thực thành công!",
+        access_token: access_token,
+        user: {
+          id: user.id,
+          full_name: user.full_name,
+          role: user.role.code,
+          avatar: user.avatar,
+        },
+      });
+  } catch (error) { 
+    next(error);
+  }
+};
+
+export const resendVerifyEmail = async (req, res, next) => {
+  try {
+    await resendVerifyEmailService(req.body, {
+      ipAddress: req.ip,
+      userAgent: req.get("user-agent"),
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Mã xác thực mới đã được gửi vào email của bạn.",
     });
   } catch (error) {
     next(error);

@@ -91,10 +91,19 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.STRING,
         allowNull: true,
       },
-      is_active: {
+      is_locked: {
         type: DataTypes.BOOLEAN,
         allowNull: false,
-        defaultValue: true,
+        defaultValue: false,
+      },
+      is_email_verified: {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: false,
+      },
+      email_verified_at: {
+        type: DataTypes.DATE,
+        allowNull: true,
       },
     },
     {

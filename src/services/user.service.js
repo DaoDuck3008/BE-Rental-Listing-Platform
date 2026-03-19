@@ -202,7 +202,7 @@ export const getAllUsersByAdminService = async (query) => {
   }
 
   if (statusFilter !== "") {
-    where.is_active = statusFilter === "active";
+    where.is_locked = statusFilter === "blocked";
   }
 
   const include = [
@@ -250,7 +250,7 @@ export const getUserStatsService = async () => {
     },
   });
   const blockedUsers = await User.count({
-    where: { is_active: false },
+    where: { is_locked: true },
   });
 
   // Count by roles
@@ -282,13 +282,13 @@ export const toggleUserActiveService = async (
   if (!user) throw new NotFoundError("Người dùng không tồn tại");
 
   const oldData = user.toJSON();
-  user.is_active = !user.is_active;
+  user.is_locked = !user.is_locked;
   await user.save();
   const newData = user.toJSON();
 
   await createAuditLog({
     userId: adminId,
-    action: user.is_active ? "ACTIVATE_USER" : "DEACTIVATE_USER",
+    action: user.is_locked ? "DEACTIVATE_USER" : "ACTIVATE_USER",
     entityType: "User",
     entityId: userId,
     oldData,

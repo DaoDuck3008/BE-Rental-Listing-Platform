@@ -93,7 +93,7 @@ module.exports = {
         type: Sequelize.STRING,
         allowNull: true,
       },
-      is_active: {
+      is_locked: {
         type: Sequelize.BOOLEAN,
         allowNull: false,
         defaultValue: true,

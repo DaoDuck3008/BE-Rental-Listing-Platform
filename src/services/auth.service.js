@@ -2,12 +2,17 @@ import { hashPassword, comparePassword } from "../utils/password.util.js";
 import { signAccessToken, signRefreshToken } from "../utils/jwt.util.js";
 import AuthenticationError from "../errors/AuthenticationError.js";
 import ConflictError from "../errors/ConflictError.js";
+import NotFoundError from "../errors/NotFoundError.js";
 import db from "../models/index.js";
 import { createAuditLog } from "./auditLog.service.js";
+import { getRedis } from "../config/redis.js";
+import { sendVerificationEmail } from "./mail.service.js";
+import { generateOTP, hashToken, compareToken } from "../utils/hash.util.js";
+import BusinessError from "../errors/BusinessError.js";
 
 const { User, Role } = db;
 
-export const registgerService = async ({
+export const registerService = async ({
   email,
   password,
   confirm_password,
@@ -17,10 +22,21 @@ export const registgerService = async ({
   avatar,
 }, auditInfo = {}) => {
   const existingUser = await User.findOne({
-    where: { email: email },
+    where: {
+      [db.Sequelize.Op.or]: [
+        { email: email },
+        { phone_number: phone_number }
+      ]
+    },
   });
+
   if (existingUser) {
-    throw new ConflictError("Email đã tồn tại");
+    if (existingUser.email === email) {
+      throw new ConflictError("Email đã tồn tại trên hệ thống.");
+    }
+    if (existingUser.phone_number === phone_number) {
+      throw new ConflictError("Số điện thoại đã tồn tại trên hệ thống.");
+    }
   }
 
   if (password !== confirm_password) {
@@ -39,7 +55,23 @@ export const registgerService = async ({
     avatar,
     gender,
     status: "Active",
+    is_locked: false, 
+    is_email_verified: process.env.VERIFY_EMAIL_TOGGLE !== "true",
   });
+
+  // Nếu tính năng verify email được bật
+  if (process.env.VERIFY_EMAIL_TOGGLE === "true") {
+    const verifyToken = generateOTP();
+    const hashedToken = hashToken(verifyToken);
+    
+    const redis = getRedis();
+    // Lưu hash của token vào Redis (hết hạn sau 10 phút)
+    await redis.set(`verify_email:${email}`, hashedToken, "EX", 600);
+
+    // Gửi email xác thực
+    await sendVerificationEmail(email, full_name, verifyToken);
+  }
+
 
   // Log action
   await createAuditLog({
@@ -54,6 +86,90 @@ export const registgerService = async ({
 
   return user;
 };
+
+export const verifyEmailService = async ({ email, token }, auditInfo = {}) => {
+  if (process.env.VERIFY_EMAIL_TOGGLE !== "true") {
+    throw new BusinessError("Tính năng xác thực email hiện đang bị tắt.");
+  }
+
+  const redis = getRedis();
+  const storedHashedToken = await redis.get(`verify_email:${email}`);
+
+  if (!storedHashedToken || !compareToken(token, storedHashedToken)) {
+    throw new BusinessError("Mã xác thực không hợp lệ hoặc đã hết hạn.");
+  }
+
+  const user = await User.findOne({
+    where: { email },
+    include: { model: Role, as: "role" },
+  });
+  if (!user) {
+    throw new NotFoundError("Người dùng không tồn tại.");
+  }
+
+  if (user.is_email_verified) {
+    throw new BusinessError("Tài khoản này đã được xác thực trước đó.");
+  }
+
+  // Update trạng thái
+  user.is_email_verified = true;
+  user.email_verified_at = new Date();
+  await user.save();
+
+  // Xóa token trong redis
+  await redis.del(`verify_email:${email}`);
+
+  // Tạo access token và refresh token cho auto login
+  const access_token = signAccessToken({
+    id: user.id,
+    role: user.role.code,
+  });
+
+  const refreshToken = signRefreshToken({
+    sub: user.id,
+    tokenVersion: 1,
+  });
+
+  // Log action
+  await createAuditLog({
+    userId: user.id,
+    action: "USER_VERIFY_EMAIL",
+    entityType: "User",
+    entityId: user.id,
+    ipAddress: auditInfo.ipAddress,
+    userAgent: auditInfo.userAgent,
+  });
+
+  return { user, access_token, refreshToken };
+};
+
+export const resendVerifyEmailService = async ({ email }, auditInfo = {}) => {
+  if (process.env.VERIFY_EMAIL_TOGGLE !== "true") {
+    throw new BusinessError("Tính năng xác thực email hiện đang bị tắt.");
+  }
+
+  const user = await User.findOne({ where: { email } });
+  if (!user) {
+    throw new NotFoundError("Email này chưa được đăng ký.");
+  }
+
+  if (user.is_email_verified) {
+    throw new BusinessError("Tài khoản đã được xác thực.");
+  }
+
+  // Tạo mã mới
+  const verifyToken = generateOTP();
+  const hashedToken = hashToken(verifyToken);
+  
+  const redis = getRedis();
+  await redis.set(`verify_email:${email}`, hashedToken, "EX", 600);
+
+  // Gửi Mail
+  await sendVerificationEmail(email, user.full_name, verifyToken);
+
+  return true;
+};
+
 
 export const googleRegisterService = async ({
   email,
@@ -136,6 +252,20 @@ export const loginService = async ({ email, password }, auditInfo = {}) => {
 
   if (!user) {
     throw new AuthenticationError("Sai Email hoặc mật khẩu đăng nhập.");
+  }
+
+  // Nếu tính năng verify email được bật, kiểm tra trạng thái xác thực
+  if (process.env.VERIFY_EMAIL_TOGGLE === "true" && !user.is_email_verified) {
+    throw new BusinessError(
+      "Tài khoản chưa được xác thực email. Vui lòng xác thực để tiếp tục.",
+      "USER_NOT_VERIFIED",
+      { email: user.email }
+    );
+  }
+
+
+  if (user.is_locked) {
+    throw new AuthenticationError("Tài khoản của bạn đã bị khóa bởi quản trị viên.");
   }
 
   const isMatch = await comparePassword(password, user.password_hash);

@@ -5,6 +5,9 @@ import {
   getOrCreateUserByGoogle,
   verifyEmailService,
   resendVerifyEmailService,
+  changePasswordService,
+  forgotPasswordService,
+  resetPasswordService,
 } from "../services/auth.service.js";
 import { getUserById } from "../services/user.service.js";
 import {
@@ -210,4 +213,54 @@ export const logout = (req, res) => {
     // path: "/api/auth/refresh"
   });
   res.sendStatus(204);
+};
+
+export const changePassword = async (req, res, next) => {
+  try {
+    const userId = req.user.id;
+    await changePasswordService(userId, req.body, {
+      ipAddress: req.ip,
+      userAgent: req.get("user-agent"),
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Đổi mật khẩu thành công!",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const forgotPassword = async (req, res, next) => {
+  try {
+    const { email } = req.body;
+    await forgotPasswordService(email, {
+      ipAddress: req.ip,
+      userAgent: req.get("user-agent"),
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Mã OTP đã được gửi về email của bạn.",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const resetPassword = async (req, res, next) => {
+  try {
+    await resetPasswordService(req.body, {
+      ipAddress: req.ip,
+      userAgent: req.get("user-agent"),
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Mật khẩu đã được đặt lại thành công!",
+    });
+  } catch (error) {
+    next(error);
+  }
 };

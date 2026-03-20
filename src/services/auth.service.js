@@ -6,7 +6,7 @@ import NotFoundError from "../errors/NotFoundError.js";
 import db from "../models/index.js";
 import { createAuditLog } from "./auditLog.service.js";
 import { getRedis } from "../config/redis.js";
-import { sendVerificationEmail } from "./mail.service.js";
+import { sendVerificationEmail, sendResetPasswordEmail } from "./mail.service.js";
 import { generateOTP, hashToken, compareToken } from "../utils/hash.util.js";
 import BusinessError from "../errors/BusinessError.js";
 
@@ -99,9 +99,9 @@ export const verifyEmailService = async ({ email, token }, auditInfo = {}) => {
     throw new BusinessError("Mã xác thực không hợp lệ hoặc đã hết hạn.");
   }
 
-  const user = await User.findOne({
+  const user = await User.findOne({ 
     where: { email },
-    include: { model: Role, as: "role" },
+    include: { model: Role, as: "role" }
   });
   if (!user) {
     throw new NotFoundError("Người dùng không tồn tại.");
@@ -170,7 +170,6 @@ export const resendVerifyEmailService = async ({ email }, auditInfo = {}) => {
   return true;
 };
 
-
 export const googleRegisterService = async ({
   email,
   full_name,
@@ -221,7 +220,7 @@ export const googleRegisterService = async ({
 };
 
 export const getOrCreateUserByGoogle = async (googleUser, auditInfo = {}) => {
-  let user = await User.findOne({
+  const user = await User.findOne({
     where: { email: googleUser.email },
     include: { model: Role, as: "role" },
   });
@@ -229,7 +228,7 @@ export const getOrCreateUserByGoogle = async (googleUser, auditInfo = {}) => {
   const { email, name, picture, sub } = googleUser;
 
   if (!user) {
-    user = await googleRegisterService({
+    return await googleRegisterService({
       email,
       full_name: name,
       provider: "GOOGLE",
@@ -239,6 +238,107 @@ export const getOrCreateUserByGoogle = async (googleUser, auditInfo = {}) => {
   }
 
   return user;
+};
+
+export const changePasswordService = async (userId, { oldPassword, newPassword }, auditInfo = {}) => {
+  const user = await User.findByPk(userId);
+  if (!user) {
+    throw new NotFoundError("Người dùng không tồn tại.");
+  }
+
+  // Nếu là user đăng nhập bằng Google/Facebook thì không có mật khẩu nội bộ. Không cho đổi
+  if (!user.password_hash) {
+    throw new BusinessError("Tài khoản đăng nhập qua bên thứ ba không thể đổi mật khẩu theo cách này.");
+  }
+
+  // Kiểm tra mật khẩu cũ
+  const isMatch = await comparePassword(oldPassword, user.password_hash);
+  if (!isMatch) {
+    throw new BusinessError("Mật khẩu hiện tại không chính xác.");
+  }
+
+  // Hash mật khẩu mới
+  const hashedPassword = await hashPassword(newPassword);
+  user.password_hash = hashedPassword;
+  await user.save();
+
+  await createAuditLog({
+    userId: user.id,
+    action: "USER_CHANGE_PASSWORD",
+    entityType: "User",
+    entityId: user.id,
+    ipAddress: auditInfo.ipAddress,
+    userAgent: auditInfo.userAgent,
+  });
+
+  return true;
+};
+
+export const forgotPasswordService = async (email, auditInfo = {}) => {
+  const user = await User.findOne({ where: { email } });
+  if (!user) {
+    throw new NotFoundError("Email này chưa được đăng ký trên hệ thống.");
+  }
+
+  // Tài khoản Google không thể reset pass theo cách này
+  if (user.provider === "GOOGLE") {
+    throw new BusinessError("Tài khoản này được đăng ký qua Google. Vui lòng sử dụng tính năng đăng nhập Google.");
+  }
+
+  // Tạo mã OTP đặt lại mật khẩu
+  const resetToken = generateOTP();
+  const hashedToken = hashToken(resetToken);
+
+  const redis = getRedis();
+  // Lưu vào Redis (10 phút)
+  await redis.set(`reset_password:${email}`, hashedToken, "EX", 600);
+
+  // Gửi email
+  await sendResetPasswordEmail(email, user.full_name, resetToken);
+
+  await createAuditLog({
+    userId: user.id,
+    action: "USER_REQUEST_FORGOT_PASSWORD",
+    entityType: "User",
+    entityId: user.id,
+    ipAddress: auditInfo.ipAddress,
+    userAgent: auditInfo.userAgent,
+  });
+
+  return true;
+};
+
+export const resetPasswordService = async ({ email, otp, newPassword }, auditInfo = {}) => {
+  const redis = getRedis();
+  const storedHashedToken = await redis.get(`reset_password:${email}`);
+
+  if (!storedHashedToken || !compareToken(otp, storedHashedToken)) {
+    throw new BusinessError("Mã xác thực không chính xác hoặc đã hết hạn.");
+  }
+
+  const user = await User.findOne({ where: { email } });
+  if (!user) {
+    throw new NotFoundError("Người dùng không tồn tại.");
+  }
+
+  // Cập nhật mật khẩu mới
+  const hashedPassword = await hashPassword(newPassword);
+  user.password_hash = hashedPassword;
+  await user.save();
+
+  // Xóa mã OTP sau khi dùng xong
+  await redis.del(`reset_password:${email}`);
+
+  await createAuditLog({
+    userId: user.id,
+    action: "USER_RESET_PASSWORD",
+    entityType: "User",
+    entityId: user.id,
+    ipAddress: auditInfo.ipAddress,
+    userAgent: auditInfo.userAgent,
+  });
+
+  return true;
 };
 
 export const loginService = async ({ email, password }, auditInfo = {}) => {
@@ -262,7 +362,6 @@ export const loginService = async ({ email, password }, auditInfo = {}) => {
       { email: user.email }
     );
   }
-
 
   if (user.is_locked) {
     throw new AuthenticationError("Tài khoản của bạn đã bị khóa bởi quản trị viên.");

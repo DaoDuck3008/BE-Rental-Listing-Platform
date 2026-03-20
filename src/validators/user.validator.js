@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+// Validator cho Đăng ký tài khoản
 export const registerUserSchema = z
   .object({
     full_name: z
@@ -35,6 +36,7 @@ export const registerUserSchema = z
     path: ["confirm_password"],
   });
 
+// Validator cho Cập nhật thông tin cá nhân
 export const updateProfileSchema = z.object({
   full_name: z
     .string()
@@ -55,3 +57,55 @@ export const updateProfileSchema = z.object({
 
   email: z.string().email("Email không hợp lệ").optional(),
 });
+
+// Validator cho Quên mật khẩu - Gửi Email
+export const forgotPasswordSchema = z.object({
+  email: z.string().email("Email không hợp lệ"),
+});
+
+// Validator cho Đặt lại mật khẩu (Reset Password)
+export const resetPasswordSchema = z
+  .object({
+    email: z.string().email("Email không hợp lệ"),
+    otp: z
+      .string()
+      .min(6, "Mã xác nhận phải đủ 6 chữ số")
+      .max(6, "Mã xác nhận phải đủ 6 chữ số")
+      .regex(/^[0-9]+$/, "Mã xác nhận chỉ bao gồm các chữ số"),
+    newPassword: z
+      .string()
+      .min(6, "Mật khẩu mới phải có ít nhất 6 ký tự")
+      .max(50, "Mật khẩu mới quá dài")
+      .regex(
+        /^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*#?&_])[A-Za-z\d@$!%*#?&_]{6,50}$/,
+        "Mật khẩu phải chứa ít nhất một chữ cái, một ký tự và một số"
+      ),
+    confirmPassword: z.string(),
+  })
+  .refine((data) => data.newPassword === data.confirmPassword, {
+    message: "Mật khẩu xác nhận không khớp",
+    path: ["confirmPassword"],
+  });
+
+// Validator cho Đổi mật khẩu
+export const changePasswordSchema = z
+  .object({
+    oldPassword: z.string().min(1, "Vui lòng nhập mật khẩu hiện tại"),
+    newPassword: z
+      .string()
+      .min(6, "Mật khẩu mới phải có ít nhất 6 ký tự")
+      .max(50, "Mật khẩu mới quá dài")
+      .regex(
+        /^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*#?&_])[A-Za-z\d@$!%*#?&_]{6,50}$/,
+        "Mật khẩu mới phải chứa ít nhất một chữ cái, một ký tự và một số"
+      ),
+    confirmPassword: z.string(),
+  })
+  .refine((data) => data.newPassword === data.confirmPassword, {
+    message: "Mật khẩu xác nhận không khớp",
+    path: ["confirmPassword"],
+  })
+  .refine((data) => data.newPassword !== data.oldPassword, {
+    message: "Mật khẩu mới không được giống mật khẩu cũ",
+    path: ["newPassword"],
+  });

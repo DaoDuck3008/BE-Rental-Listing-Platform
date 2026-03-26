@@ -228,14 +228,26 @@ export const getOrCreateUserByGoogle = async (googleUser, auditInfo = {}) => {
   const { email, name, picture, sub } = googleUser;
 
   if (!user) {
-    return await googleRegisterService({
-      email,
-      full_name: name,
-      provider: "GOOGLE",
-      provider_user_id: sub,
-      avatar: picture,
-    }, auditInfo);
+    user = await googleRegisterService(
+      {
+        email,
+        full_name: name,
+        provider: "GOOGLE",
+        provider_user_id: sub,
+        avatar: picture,
+      },
+      auditInfo
+    );
   }
+
+  await createAuditLog({
+    userId: user.id,
+    action: "USER_GOOGLE_LOGIN",
+    entityType: "User",
+    entityId: user.id,
+    ipAddress: auditInfo.ipAddress,
+    userAgent: auditInfo.userAgent,
+  });
 
   return user;
 };

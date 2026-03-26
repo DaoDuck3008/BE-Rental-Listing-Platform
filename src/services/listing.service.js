@@ -2205,3 +2205,29 @@ export const favoriteListingService = async (listingId, userId) => {
     throw new DatabaseError("Lỗi không xác định khi yêu thích bài đăng");
   }
 };
+
+export const getUserListingStatsService = async (userId) => {
+  const [total, pending, published] = await Promise.all([
+    Listing.count({
+      where: {
+        owner_id: userId,
+        status: { [Op.notIn]: ["SOFT_DELETED", "DELETED"] },
+        parent_listing_id: null,
+      },
+    }),
+    Listing.count({
+      where: {
+        owner_id: userId,
+        status: "PENDING",
+      },
+    }),
+    Listing.count({
+      where: {
+        owner_id: userId,
+        status: "PUBLISHED",
+      },
+    }),
+  ]);
+
+  return { total, pending, published };
+};

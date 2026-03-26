@@ -87,3 +87,10 @@ export const getAuditLogById = async (id) => {
 
   return log;
 };
+export const getUserRecentActivityService = async (userId, limit = 5) => {
+  return await AuditLog.findAll({
+    where: { user_id: userId },
+    order: [["created_at", "DESC"]],
+    limit,
+  });
+};

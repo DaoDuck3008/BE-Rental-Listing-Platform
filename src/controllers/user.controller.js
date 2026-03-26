@@ -8,8 +8,30 @@
   updateUserRoleService,
   getUserDetailForAdminService,
 } from "../services/user.service.js";
+import { getUserListingStatsService } from "../services/listing.service.js";
+import { getUserRecentActivityService } from "../services/auditLog.service.js";
 import { verifyAcessToken } from "../utils/jwt.util.js";
 import AuthenticationError from "../errors/AuthenticationError.js";
+
+export const getUserDashboardData = async (req, res, next) => {
+  try {
+    const userId = req.user.id;
+    const [stats, activities] = await Promise.all([
+      getUserListingStatsService(userId),
+      getUserRecentActivityService(userId, 5),
+    ]);
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        stats,
+        activities,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
 
 export const getMe = async (req, res, next) => {
   try {

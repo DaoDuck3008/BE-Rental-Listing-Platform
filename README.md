@@ -105,11 +105,18 @@ src/
 ---
 
 ## 📜 API Documentation
+
+We use **Swagger UI** for comprehensive and interactive API documentation. 
+Below is a demonstration of our API Gateway:
+
+<video src="./assets/API_Gateway.mp4" controls="controls" muted="muted" playsinline="playsinline" width="100%">
+</video>
+
 - **Health Check:** `GET /`
 - **Auth:** `/api/auth`
 - **Listings:** `/api/listings`
 - **Users:** `/api/users`
-- *(Ongoing: Swagger documentation is being updated at `/api-docs`)*
+- *(Interactive Swagger documentation is available at `/api-docs` when running locally)*
 
 ---
 

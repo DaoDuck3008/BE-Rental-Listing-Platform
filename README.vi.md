@@ -105,11 +105,18 @@ src/
 ---
 
 ## 📜 Tài liệu API
+
+Dự án sử dụng **Swagger UI** được cấu hình tự động bằng JSDoc để cung cấp tài liệu API trực quan và có thể test trực tiếp.
+Dưới đây là video demo tương tác với hệ thống API Gateway:
+
+<video src="./assets/API_Gateway.mp4" controls="controls" muted="muted" playsinline="playsinline" width="100%">
+</video>
+
 - **Health Check:** `GET /`
 - **Auth:** `/api/auth`
 - **Listings:** `/api/listings`
 - **Users:** `/api/users`
-- *(Hệ thống đang được cập nhật tài liệu Swagger tại `/api-docs`)*
+- *(Tài liệu Swagger đã hoàn thiện. Có thể truy cập tại `/api-docs` khi chạy local)*
 
 ---
 

@@ -24,6 +24,9 @@ import { initRedis } from "./config/redis.js";
 import { verifyMailConnection } from "./config/mail.js";
 import { startSyncListingViewsJob } from "./jobs/syncListingViews.job.js";
 
+import swaggerUi from "swagger-ui-express";
+import { swaggerSpec } from "./config/swagger.js";
+
 dotenv.config();
 
 const app = express();
@@ -62,6 +65,9 @@ connectDB();
 initRedis();
 // VERIFY SMTP
 verifyMailConnection();
+
+// SWAGGER DOCS (Đặt trước các route cơ bản)
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 // ROUTE
 app.use("/", defaultRoutes);

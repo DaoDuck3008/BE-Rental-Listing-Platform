@@ -13,4 +13,4 @@ COPY . .
 EXPOSE 5000
 
 # Start the application
-CMD ["node", "src/server.js"]
+CMD ["sh", "-c", "npx sequelize-cli db:migrate && node src/server.js"]

@@ -54,8 +54,8 @@ export const verifyEmail = async (req, res, next) => {
       .status(200)
       .cookie("refresh_token", refreshToken, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+        secure: false,
+        sameSite: "lax",
         expires: new Date(Date.now() + maxAge),
       })
       .json({
@@ -105,8 +105,8 @@ export const login = async (req, res, next) => {
       .status(200)
       .cookie("refresh_token", refreshToken, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+        secure: false,
+        sameSite: "lax",
         expires: maxAge ? new Date(Date.now() + maxAge) : undefined,
         // path: "/api/auth/refresh",
       })
@@ -161,8 +161,8 @@ export const googleLogin = async (req, res, next) => {
       .status(200)
       .cookie("refresh_token", refreshToken, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+        secure: false,
+        sameSite: "lax",
         expires: new Date(Date.now() + maxAge),
         // path: "/api/auth/refresh",
       })
@@ -208,8 +208,8 @@ export const refresh = async (req, res) => {
 export const logout = (req, res) => {
   res.clearCookie("refresh_token", {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+    secure: false,
+    sameSite: "lax",
     // path: "/api/auth/refresh"
   });
   res.sendStatus(204);

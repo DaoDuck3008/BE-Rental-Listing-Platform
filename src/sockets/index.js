@@ -11,7 +11,7 @@ export const initSocket = (server) => {
   io = new Server(server, {
     path: "/socket.io",
     cors: {
-      origin: process.env.FRONTEND_URL || "http://127.0.0.1:3000",
+      origin: process.env.FRONTEND_URL,
       methods: ["GET", "POST"],
       credentials: true,
     },

@@ -62,6 +62,7 @@ module.exports = {
       await queryInterface.bulkInsert("listing_types", [
         {
           id: listingTypeId,
+          code: "APARTMENT",
           name: "Apartment",
           description: "Căn hộ hiện đại",
           created_at: defaultDate,
@@ -112,8 +113,8 @@ module.exports = {
             listing_type_id: listingTypeId,
             title: listingTitles[i],
             description: "Dữ liệu được Seed hoàn toàn tự động bằng công cụ Sequelize Seeder. Căn hộ này có view 360 độ ngắm toàn thành phố, nội thất sử dụng gỗ Óc Chó nhập khẩu, thiết bị điện thông minh smarthome. Hình ảnh được render real-time từ Unsplash.",
-            price: 5000000 + (Math.random() * 15000000), // Random 5tr - 20tr
-            area: 40 + (Math.random() * 80), // Random 40m - 120m
+            price: Math.floor(5000000 + (Math.random() * 15000000)), // Random 5tr - 20tr
+            area: Math.floor(40 + (Math.random() * 80)), // Random 40m - 120m
             address: loc.addr,
             province_code: 79, // Mã của TP.HCM
             ward_code: null,

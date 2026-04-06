@@ -19,7 +19,7 @@ module.exports = {
         {
           id: roleId,
           code: "LANDLORD",
-          name: "Landlord",
+          name: "Chủ cho thuê",
           created_at: defaultDate,
           updated_at: defaultDate,
         },
@@ -84,27 +84,27 @@ module.exports = {
       "https://images.unsplash.com/photo-1502672260266-1c1e5250f225?q=80&w=1200", // Nội thất concept
     ];
 
-    // Mảng toạ độ tập trung tại TP. Hồ Chí Minh
-    const hcmLocations = [
-      { lat: 10.7769, lng: 106.7009, addr: "Đường Đồng Khởi, Quận 1, TP. HCM" },
-      { lat: 10.795, lng: 106.7218, addr: "Vinhomes Central Park, Bình Thạnh, TP.HCM" },
-      { lat: 10.8043, lng: 106.738, addr: "Đường Xuân Thuỷ, Thảo Điền, Quận 2, TP.HCM" },
-      { lat: 10.761, lng: 106.698, addr: "Bến Vân Đồn, Quận 4, TP. HCM" },
-      { lat: 10.73, lng: 106.72, addr: "Nguyễn Văn Linh, Quận 7, TP. HCM" },
+    // Mảng toạ độ tập trung tại trung tâm Hà Nội
+    const hanoiLocations = [
+      { lat: 21.0285, lng: 105.8542, addr: "Đường Hai Bà Trưng, Hoàn Kiếm, Hà Nội" },
+      { lat: 21.0343, lng: 105.8209, addr: "Vinhomes Metropolis, Ba Đình, Hà Nội" },
+      { lat: 21.0156, lng: 105.8267, addr: "Thái Hà, Đống Đa, Hà Nội" },
+      { lat: 21.0104, lng: 105.8525, addr: "Times City, Hai Bà Trưng, Hà Nội" },
+      { lat: 21.0366, lng: 105.7981, addr: "Trung Hòa Nhân Chính, Cầu Giấy, Hà Nội" },
     ];
 
     const listingTitles = [
-      "Siêu Căn hộ Dịch Vụ trung tâm Quận 1",
-      "Studio ánh sáng ngập tràn view Landmark 81",
-      "Penthouse Tân Cổ Điển siêu sang tại Thảo Điền",
-      "Căn hộ 2 Phòng Ngủ cao cấp view sông Quận 4",
-      "Villa yên tĩnh nội thất cực chill Quận 7",
+      "Siêu Căn hộ Dịch Vụ trung tâm phố cổ Hoàn Kiếm",
+      "Studio ánh sáng ngập tràn Metropolis Liễu Giai",
+      "Phòng trọ cao cấp full đồ tại Thái Hà",
+      "Căn hộ 2 Phòng Ngủ cao cấp Times City",
+      "Chung cư mini yên tĩnh Cầu Giấy",
     ];
 
     // Bắt đầu tạo dữ liệu 5 bài đăng & 15 Ảnh
     for (let i = 0; i < 5; i++) {
         const listingId = crypto.randomUUID();
-        const loc = hcmLocations[i];
+        const loc = hanoiLocations[i];
 
         // Tạo Listing
         listings.push({
@@ -116,7 +116,7 @@ module.exports = {
             price: Math.floor(5000000 + (Math.random() * 15000000)), // Random 5tr - 20tr
             area: Math.floor(40 + (Math.random() * 80)), // Random 40m - 120m
             address: loc.addr,
-            province_code: 79, // Mã của TP.HCM
+            province_code: 1, // Mã của Hà Nội
             ward_code: null,
             longitude: loc.lng,
             latitude: loc.lat,
@@ -179,3 +179,4 @@ module.exports = {
     }
   },
 };
+

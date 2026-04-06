@@ -97,9 +97,11 @@ export const login = async (req, res, next) => {
       userAgent: req.get("user-agent"),
     });
 
-    // Nếu như client gửi về thông tin lưu đăng nhập thì set cookie sống trong 7 ngày
+    // Khách chọn lưu đăng nhập thì sống 7 ngày, ngược lại mặc định sống 1 ngày
     const maxAge =
-      req.body.rememberMe === "1" ? 7 * 24 * 60 * 60 * 1000 : undefined;
+      req.body.rememberMe === "1"
+        ? 7 * 24 * 60 * 60 * 1000
+        : 1 * 24 * 60 * 60 * 1000;
 
     return res
       .status(200)
@@ -107,7 +109,7 @@ export const login = async (req, res, next) => {
         httpOnly: true,
         secure: false,
         sameSite: "lax",
-        expires: maxAge ? new Date(Date.now() + maxAge) : undefined,
+        expires: new Date(Date.now() + maxAge),
         // path: "/api/auth/refresh",
       })
       .json({

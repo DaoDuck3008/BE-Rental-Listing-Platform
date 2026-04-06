@@ -35,13 +35,8 @@ export const getUserDashboardData = async (req, res, next) => {
 
 export const getMe = async (req, res, next) => {
   try {
-    const auth = req.headers.authorization;
-    if (!auth) next(new AuthenticationError("No authorization header"));
-
-    const token = auth.split(" ")[1];
-    const payload = verifyAcessToken(token);
-
-    const user = await getUserById(payload.sub);
+    const userId = req.user.id;
+    const user = await getUserById(userId);
 
     let canPostListing = true;
     let profileCompleted = true;

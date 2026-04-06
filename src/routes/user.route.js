@@ -9,7 +9,7 @@ import {
 import { upload } from "../middlewares/upload.middleware.js";
 import { protect } from "../middlewares/auth.middleware.js";
 import { validate } from "../middlewares/validate.middleware.js";
-import { updateProfileSchema } from "../validators/user.validator.js";
+import { fillProfileSchema, updateProfileSchema } from "../validators/user.validator.js";
 
 const router = express.Router();
 
@@ -79,7 +79,7 @@ router.put(
   "/profile",
   protect,
   upload.single("avatar"),
-  validate(updateProfileSchema),
+  validate(fillProfileSchema),
   updateProfile
 );
 

@@ -58,6 +58,23 @@ export const updateProfileSchema = z.object({
   email: z.string().email("Email không hợp lệ").optional(),
 });
 
+// Validator cho Hoàn thiện hồ sơ (Bổ sung sau khi đăng nhập bằng Google/Facebook, v.v.)
+export const fillProfileSchema = z.object({
+  phone_number: z
+    .string()
+    .trim()
+    .min(1, "Số điện thoại không được để trống")
+    .regex(/^(0|\+84)[0-9]{9}$/, "Số điện thoại không hợp lệ (phải có 10 số)"),
+
+  gender: z.enum(["Male", "Female", "Other"], {
+    errorMap: () => ({ message: "Giới tính không hợp lệ" }),
+  }).optional(),
+
+  role: z.enum(["TENANT", "LANDLORD", "USER"], {
+    errorMap: () => ({ message: "Vai trò không hợp lệ" }),
+  }).optional(),
+});
+
 // Validator cho Quên mật khẩu - Gửi Email
 export const forgotPasswordSchema = z.object({
   email: z.string().email("Email không hợp lệ"),

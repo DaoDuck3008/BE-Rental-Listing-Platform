@@ -26,17 +26,6 @@ const {
   Destination,
 } = db;
 
-const clearListingSearchCache = async () => {
-  try {
-    const redis = getRedis();
-    const keys = await redis.keys("listings:search:*");
-    if (keys.length > 0) {
-      await redis.del(...keys);
-    }
-  } catch (error) {
-    console.error(new RedisError("Lỗi xóa cache tìm kiếm: " + error.message));
-  }
-};
 
 export const clearPublishedListingDetailCache = async (listingId) => {
   try {
@@ -152,17 +141,6 @@ export const searchPublishedListingsService = async (params) => {
       radius: radius ? Math.round(radius / 100) * 100 : undefined,
     };
 
-    const cacheKey = `listings:search:${JSON.stringify(stableParams)}`;
-    const redis = getRedis();
-
-    try {
-      const cachedData = await redis.get(cacheKey);
-      if (cachedData) {
-        return JSON.parse(cachedData);
-      }
-    } catch (err) {
-      console.error(new RedisError("Lỗi lấy dữ liệu từ cache: " + err.message));
-    }
 
     const p = parseInt(page) || 1;
     const l = parseInt(limit) || 12;
@@ -366,13 +344,6 @@ export const searchPublishedListingsService = async (params) => {
       markers: markers,
     };
 
-    try {
-      await redis.set(cacheKey, JSON.stringify(finalResult), "EX", 300);
-    } catch (err) {
-      console.error(
-        new RedisError("Lỗi lưu dữ liệu vào cache: " + err.message)
-      );
-    }
 
     return finalResult;
   } catch (error) {
@@ -1309,7 +1280,6 @@ export const updateListingService = async (
     const newData = listing.toJSON();
 
     await t.commit();
-    await clearListingSearchCache();
     await clearPublishedListingDetailCache(listingId);
 
     // Log action
@@ -1416,7 +1386,6 @@ export const hideListingService = async (listingId, userId, auditInfo = {}) => {
     throw new BusinessError("Chỉ có thể ẩn bài đăng đang hiển thị.");
 
   await listing.update({ status: "HIDDEN" });
-  await clearListingSearchCache();
   await clearPublishedListingDetailCache(listingId);
 
   // Log action
@@ -1443,7 +1412,6 @@ export const showListingService = async (listingId, userId, auditInfo = {}) => {
     throw new BusinessError("Bài đăng này không bị ẩn.");
 
   await listing.update({ status: "PUBLISHED" });
-  await clearListingSearchCache();
   await clearPublishedListingDetailCache(listingId);
 
   // Log action
@@ -1479,7 +1447,6 @@ export const renewListingService = async (
     published_at: sequelize.fn("NOW"),
     expired_at: sequelize.literal("NOW() + interval '30 days'"),
   });
-  await clearListingSearchCache();
   await clearPublishedListingDetailCache(listingId);
 
   // Log action
@@ -1708,7 +1675,6 @@ export const approveListingService = async (
     expired_at: sequelize.literal("NOW() + interval '30 days'"),
   });
 
-  await clearListingSearchCache();
   await clearPublishedListingDetailCache(listingId);
 
   await createAuditLog({
@@ -1866,7 +1832,6 @@ export const approveEditDraftListingService = async (
     await editDraftListing.destroy({ transaction: t });
 
     await t.commit();
-    await clearListingSearchCache();
     await clearPublishedListingDetailCache(parentListing.id);
 
     // Log action
@@ -1947,7 +1912,6 @@ export const hardDeleteListingService = async (
     await t.commit();
 
     // 3. Xóa cache
-    await clearListingSearchCache();
     await clearPublishedListingDetailCache(listingId);
 
     // Log action
@@ -2055,7 +2019,6 @@ export const rejectEditDraftListingService = async (
     await listing.destroy({ transaction: t });
 
     await t.commit();
-    await clearListingSearchCache();
     await clearPublishedListingDetailCache(parentListing.id);
 
     // Log action
@@ -2127,7 +2090,6 @@ export const softDeleteListingService = async (
     }
 
     await t.commit();
-    await clearListingSearchCache();
     await clearPublishedListingDetailCache(listingId);
 
     // Log action

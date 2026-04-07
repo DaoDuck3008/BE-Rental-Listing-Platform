@@ -29,11 +29,40 @@ export const getAllPublishedListings = async (req, res, next) => {
       ...req.query,
       page,
       limit,
+      include_markers: false, // Ensure we don't fetch markers for grid view
     });
 
     return res.json({
       success: true,
       data: result.rows,
+      pagination: {
+        page,
+        limit,
+        totalItems: result.count,
+        totalPages: Math.ceil(result.count / limit),
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const searchMapListings = async (req, res, next) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 12;
+
+    const result = await searchPublishedListingsService({
+      ...req.query,
+      page,
+      limit,
+      include_markers: true, // Always include markers for map view
+    });
+
+    return res.json({
+      success: true,
+      data: result.rows,
+      markers: result.markers,
       pagination: {
         page,
         limit,

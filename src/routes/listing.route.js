@@ -14,10 +14,11 @@ import {
   updateSoftPublisedListing,
   getMyListingById,
   updateHardPublishedListing,
-  getAllPublishedListings,
-  favoriteListing,
-  getNearbyDestinationsListing,
   getRelatedListingsController,
+  searchMapListings,
+  getAllPublishedListings,
+  getNearbyDestinationsListing,
+  favoriteListing
 } from "../controllers/listing.controller.js";
 import {
   protect,
@@ -54,6 +55,7 @@ const router = express.Router();
  *         description: Returning array of published properties
  */
 router.get("/", getAllPublishedListings);
+router.get("/map", searchMapListings);
 
 /**
  * @swagger

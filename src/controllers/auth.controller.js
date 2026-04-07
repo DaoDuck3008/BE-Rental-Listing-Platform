@@ -188,7 +188,7 @@ export const refresh = async (req, res) => {
 
   const payload = verifyRefreshToken(token);
 
-  const user = await getUserById(payload.id);
+  const user = await getUserById(payload.sub);
 
   const access_token = signAccessToken({
     id: user.id,

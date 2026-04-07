@@ -96,12 +96,7 @@ export const getProfile = async (req, res, next) => {
 
 export const updateProfile = async (req, res, next) => {
   try {
-    const auth = req.headers.authorization;
-    if (!auth) return res.sendStatus(401);
-
-    const token = auth.split(" ")[1];
-    const payload = verifyAcessToken(token);
-    const userId = payload.sub;
+    const userId = req.user.id;
 
     const { EM, EC } = await updateUserProfile(userId, req.body, req.file, {
       ipAddress: req.ip,

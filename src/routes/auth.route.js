@@ -20,6 +20,7 @@ import {
   resetPasswordSchema,
   changePasswordSchema,
 } from "../validators/user.validator.js";
+import { registerLimiter, loginLimiter } from "../middlewares/rateLimit.middleware.js";
 
 const router = express.Router();
 
@@ -64,7 +65,7 @@ const router = express.Router();
  *       201:
  *         description: Registration successful
  */
-router.post("/register", upload.none(), validate(registerUserSchema), register);
+router.post("/register", registerLimiter, upload.none(), validate(registerUserSchema), register);
 
 /**
  * @swagger
@@ -93,7 +94,7 @@ router.post("/register", upload.none(), validate(registerUserSchema), register);
  *       200:
  *         description: Login successful (Returns user data and stores JWT token in cookie)
  */
-router.post("/login", upload.none(), login);
+router.post("/login", loginLimiter, upload.none(), login);
 
 /**
  * @swagger
@@ -122,7 +123,7 @@ router.post("/login", upload.none(), login);
  *       200:
  *         description: Google authentication successful
  */
-router.post("/google", upload.none(), googleLogin);
+router.post("/google", loginLimiter, upload.none(), googleLogin);
 
 /**
  * @swagger

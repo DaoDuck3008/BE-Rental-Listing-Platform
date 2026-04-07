@@ -32,7 +32,7 @@ import {
   updateSoftListingSchema,
   updateHardListingSchema,
 } from "../validators/listing.validator.js";
-import { listingCreationLimiter } from "../middlewares/rateLimit.middleware.js";
+import { listingCreationLimiter, otherLimiter, searchLimiter } from "../middlewares/rateLimit.middleware.js";
 
 const router = express.Router();
 

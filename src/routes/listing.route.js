@@ -33,7 +33,7 @@ import {
   updateSoftListingSchema,
   updateHardListingSchema,
 } from "../validators/listing.validator.js";
-import { listingCreationLimiter, otherLimiter, searchLimiter } from "../middlewares/rateLimit.middleware.js";
+import { listingCreationLimiter, otherLimiter, mapSearchLimiter } from "../middlewares/rateLimit.middleware.js";
 
 const router = express.Router();
 
@@ -55,7 +55,7 @@ const router = express.Router();
  *         description: Returning array of published properties
  */
 router.get("/", getAllPublishedListings);
-router.get("/map", searchMapListings);
+router.get("/map", mapSearchLimiter, searchMapListings);
 
 /**
  * @swagger

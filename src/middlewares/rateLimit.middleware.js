@@ -39,11 +39,11 @@ export const listingCreationLimiter = createLimiter({
 });
 
 // 2. Limiter cho Tìm kiếm bài viết (Bảo vệ API Google Maps)
-export const searchLimiter = createLimiter({
-  prefix: "search",
+export const mapSearchLimiter = createLimiter({
+  prefix: "map-search",
   windowMs: 15 * 60 * 1000, // 15 phút
-  limit: 30, // 30 lượt tìm kiếm/15 phút
-  message: "Máy của bạn đã gửi quá nhiều yêu cầu tìm kiếm. Vui lòng thử lại sau 15 phút.",
+  limit: 50, // 50 lượt tìm kiếm/15 phút
+  message: "Máy của bạn đã gửi quá nhiều yêu cầu tìm kiếm trên bản đồ. Vui lòng thử lại sau 15 phút.",
 });
 
 // 3. Limiter cho Đăng ký tài khoản

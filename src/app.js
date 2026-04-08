@@ -38,7 +38,7 @@ app.set("trust proxy", 1);
 // MIDDLEWARE
 app.use(
   cors({
-    origin: [process.env.FRONTEND_URL],
+    origin: [process.env.FRONTEND_URL, process.env.FRONTEND_DOMAIN_URL],
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],

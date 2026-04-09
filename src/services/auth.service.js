@@ -379,6 +379,10 @@ export const loginService = async ({ email, password }, auditInfo = {}) => {
     throw new AuthenticationError("Tài khoản của bạn đã bị khóa bởi quản trị viên.");
   }
 
+  if(!user.password_hash) {
+    throw new AuthenticationError("Tài khoản đăng nhập qua bên thứ ba, chưa cài đặt mật khẩu nội bộ. Hãy đăng nhập qua bên thứ ba để tiếp tục.");
+  }
+
   const isMatch = await comparePassword(password, user.password_hash);
   if (!isMatch) {
     throw new AuthenticationError("Sai Email hoặc mật khẩu đăng nhập.");

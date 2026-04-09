@@ -106,11 +106,11 @@ src/
 
 ## 📜 API Documentation
 
-We use **Swagger UI** for comprehensive and interactive API documentation. 
-Below is a demonstration of our API Gateway:
+We use **Swagger UI** for comprehensive and interactive API documentation.
 
-<video src="./assets/API_Gateway.mp4" controls="controls" muted="muted" playsinline="playsinline" width="100%">
-</video>
+Below is a short walkthrough of the API Gateway. **GitHub README does not embed MP4 players**, so use the link to open or download the file in your browser.
+
+- **[Watch API Gateway demo (MP4)](../../assets/API_Gateway.mp4)**
 
 - **Swagger (Local):** `http://localhost:5000/api-docs`
 - **Swagger (Production):** `https://rental.daoduck.id.vn/api-docs/`

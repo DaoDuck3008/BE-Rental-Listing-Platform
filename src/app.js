@@ -27,6 +27,7 @@ import { startSyncListingViewsJob } from "./jobs/syncListingViews.job.js";
 
 import swaggerUi from "swagger-ui-express";
 import { swaggerSpec } from "./config/swagger.js";
+import { buildSwaggerSpecForEnvironment } from "./config/swaggerVisibility.js";
 
 dotenv.config();
 
@@ -70,7 +71,11 @@ verifyMailConnection();
 verifyCloudinaryConnection();
 
 // SWAGGER DOCS (Đặt trước các route cơ bản)
-app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+app.use(
+  "/api-docs",
+  swaggerUi.serve,
+  swaggerUi.setup(buildSwaggerSpecForEnvironment(swaggerSpec))
+);
 
 // ROUTE
 app.use("/", defaultRoutes);

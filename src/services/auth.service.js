@@ -220,7 +220,7 @@ export const googleRegisterService = async ({
 };
 
 export const getOrCreateUserByGoogle = async (googleUser, auditInfo = {}) => {
-  const user = await User.findOne({
+  let user = await User.findOne({
     where: { email: googleUser.email },
     include: { model: Role, as: "role" },
   });

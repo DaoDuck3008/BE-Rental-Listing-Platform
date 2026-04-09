@@ -85,6 +85,26 @@ router.put(
 
 /**
  * @swagger
+ * /api/users/profile:
+ *   patch:
+ *     summary: Update detailed personal profile (full_name etc.)
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Profile updated successfully
+ */
+router.patch(
+  "/profile",
+  protect,
+  upload.single("avatar"),
+  validate(updateProfileSchema),
+  updateProfile
+);
+
+/**
+ * @swagger
  * /api/users/favorites:
  *   get:
  *     summary: Get user's saved/favorited listings

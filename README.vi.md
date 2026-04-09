@@ -106,17 +106,33 @@ src/
 
 ## 📜 Tài liệu API
 
-Dự án sử dụng **Swagger UI** được cấu hình tự động bằng JSDoc để cung cấp tài liệu API trực quan và có thể test trực tiếp.
-Dưới đây là video demo tương tác với hệ thống API Gateway:
+Dự án sử dụng **Swagger UI** để cung cấp tài liệu API đầy đủ và có thể tương tác trực tiếp.  
+Dưới đây là video demo hệ thống API Gateway:
 
 <video src="./assets/API_Gateway.mp4" controls="controls" muted="muted" playsinline="playsinline" width="100%">
 </video>
 
+- **Swagger (Local):** `http://localhost:5000/api-docs`
+- **Swagger (Production):** `https://rental.daoduck.id.vn/api-docs/`
 - **Health Check:** `GET /`
+
+### Nhóm API chính
+
 - **Auth:** `/api/auth`
 - **Listings:** `/api/listings`
 - **Users:** `/api/users`
-- *(Tài liệu Swagger đã hoàn thiện. Có thể truy cập tại `/api-docs` khi chạy local)*
+- **Notifications:** `/api/notifications`
+
+### Tài khoản test demo
+
+- **Email:** `reviewer.demo@example.com`
+- **Password:** `Demo@123456`
+- **Role:** `User` (không phải admin)
+
+### Ghi chú bảo mật trên Production
+
+Để bảo vệ các thao tác nhạy cảm, **Admin routes được ẩn khỏi Swagger public trên môi trường production**.  
+Các API admin vẫn được bảo vệ ở runtime bằng xác thực và phân quyền theo vai trò (RBAC).
 
 ---
 

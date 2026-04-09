@@ -112,11 +112,28 @@ Below is a demonstration of our API Gateway:
 <video src="./assets/API_Gateway.mp4" controls="controls" muted="muted" playsinline="playsinline" width="100%">
 </video>
 
-- **Health Check:** `GET /`
+- **Swagger (Local):** `http://localhost:5000/api-docs`
+- **Swagger (Production):** `https://rental.daoduck.id.vn/api-docs/`
+- **Health Check:** `GET /` 
+
+### Main API Groups
+
 - **Auth:** `/api/auth`
 - **Listings:** `/api/listings`
 - **Users:** `/api/users`
-- *(Interactive Swagger documentation is available at `/api-docs` when running locally)*
+- **Notifications:** `/api/notifications`
+
+### Demo Test Account
+
+- **Email:** `reviewer.demo@example.com`
+- **Password:** `Demo@123456`
+- **Role:** `User` (non-admin)
+
+
+### Production Security Note
+
+To protect sensitive operations, **Admin routes are hidden from public Swagger docs in production**.  
+Admin APIs are still protected by authentication and role-based access control (RBAC) at runtime.
 
 ---
 
